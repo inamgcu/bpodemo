@@ -1,0 +1,194 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+6 0 obj
+<< /Length 6480 >>
+stream
+q
+0.063 0.098 0.153 rg
+0 744 612 48 re f
+Q
+BT /F2 17 Tf 1.000 1.000 1.000 rg 36 768 Td (First National Bank) Tj ET
+BT /F1 8.5 Tf 0.831 0.863 0.910 rg 36 753 Td (Commercial Banking Services) Tj ET
+BT /F1 8.5 Tf 0.831 0.863 0.910 rg 36 741 Td (P.O. Box 1000, Atlanta, GA 30301) Tj ET
+BT /F2 16 Tf 1.000 1.000 1.000 rg 424 766 Td (Account Statement) Tj ET
+BT /F1 8.5 Tf 0.831 0.863 0.910 rg 350 749 Td (Statement Period: 04/01/2026 - 04/30/2026) Tj ET
+BT /F1 8.5 Tf 0.831 0.863 0.910 rg 350 737 Td (Account Ending: 3002) Tj ET
+BT /F1 8.5 Tf 0.831 0.863 0.910 rg 350 725 Td (Currency: USD) Tj ET
+q
+0.973 0.980 0.988 rg
+0.863 0.890 0.922 RG 0.7 w
+36 638 168 82 re B
+Q
+BT /F2 8 Tf 0.282 0.380 0.451 rg 48 700 Td (CUSTOMER) Tj ET
+BT /F2 9 Tf 0.090 0.125 0.173 rg 48 681 Td (River Walk Plaza) Tj ET
+BT /F2 8 Tf 0.090 0.125 0.173 rg 48 664 Td (Property ID:) Tj ET
+BT /F1 8 Tf 0.149 0.204 0.278 rg 112 664 Td (PROP-300-RIV) Tj ET
+q
+0.973 0.980 0.988 rg
+0.863 0.890 0.922 RG 0.7 w
+222 638 168 82 re B
+Q
+BT /F2 8 Tf 0.282 0.380 0.451 rg 234 700 Td (ACCOUNT) Tj ET
+BT /F2 9 Tf 0.090 0.125 0.173 rg 234 681 Td (Reserve Account) Tj ET
+BT /F2 8 Tf 0.090 0.125 0.173 rg 234 664 Td (Account ID:) Tj ET
+BT /F1 8 Tf 0.149 0.204 0.278 rg 298 664 Td (BANK-RES-3002) Tj ET
+q
+0.973 0.980 0.988 rg
+0.863 0.890 0.922 RG 0.7 w
+408 638 168 82 re B
+Q
+BT /F2 8 Tf 0.282 0.380 0.451 rg 420 700 Td (STATEMENT) Tj ET
+BT /F2 8 Tf 0.090 0.125 0.173 rg 420 681 Td (Source File:) Tj ET
+BT /F1 8 Tf 0.149 0.204 0.278 rg 484 681 Td (FILE-BANK-202604-010) Tj ET
+BT /F2 8 Tf 0.090 0.125 0.173 rg 420 664 Td (Month:) Tj ET
+BT /F1 8 Tf 0.149 0.204 0.278 rg 484 664 Td (2026-04) Tj ET
+q
+1.000 1.000 1.000 rg
+0.863 0.890 0.922 RG 0.7 w
+36 558 126 58 re B
+Q
+BT /F2 7.5 Tf 0.282 0.380 0.451 rg 46 595 Td (OPENING BALANCE) Tj ET
+BT /F2 12 Tf 0.090 0.125 0.173 rg 89.6 573 Td (171,652.20) Tj ET
+q
+1.000 1.000 1.000 rg
+0.863 0.890 0.922 RG 0.7 w
+174 558 126 58 re B
+Q
+BT /F2 7.5 Tf 0.282 0.380 0.451 rg 184 595 Td (TOTAL DEBITS) Tj ET
+BT /F2 12 Tf 0.624 0.114 0.114 rg 233.84 573 Td (29,639.38) Tj ET
+q
+1.000 1.000 1.000 rg
+0.863 0.890 0.922 RG 0.7 w
+312 558 126 58 re B
+Q
+BT /F2 7.5 Tf 0.282 0.380 0.451 rg 322 595 Td (TOTAL CREDITS) Tj ET
+BT /F2 12 Tf 0.024 0.463 0.278 rg 371.84 573 Td (45,313.35) Tj ET
+q
+1.000 1.000 1.000 rg
+0.863 0.890 0.922 RG 0.7 w
+450 558 126 58 re B
+Q
+BT /F2 7.5 Tf 0.282 0.380 0.451 rg 460 595 Td (CLOSING BALANCE) Tj ET
+BT /F2 12 Tf 0.090 0.125 0.173 rg 503.6 573 Td (187,326.17) Tj ET
+BT /F2 12 Tf 0.090 0.125 0.173 rg 36 531 Td (River Walk Plaza - Reserve Account) Tj ET
+BT /F1 8.5 Tf 0.376 0.439 0.518 rg 36 515 Td (Transaction activity) Tj ET
+q
+0.063 0.098 0.153 rg
+36 486 540 22 re f
+Q
+BT /F2 7.3 Tf 1.000 1.000 1.000 rg 44 494 Td (DATE) Tj ET
+BT /F2 7.3 Tf 1.000 1.000 1.000 rg 98 494 Td (POSTED DATE) Tj ET
+BT /F2 7.3 Tf 1.000 1.000 1.000 rg 168 494 Td (DESCRIPTION) Tj ET
+BT /F2 7.3 Tf 1.000 1.000 1.000 rg 429.22 494 Td (DEBITS) Tj ET
+BT /F2 7.3 Tf 1.000 1.000 1.000 rg 485.43 494 Td (CREDITS) Tj ET
+BT /F2 7.3 Tf 1.000 1.000 1.000 rg 541.43 494 Td (BALANCE) Tj ET
+q
+0.973 0.980 0.988 rg
+36 457 540 27 re f
+Q
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 44 466 Td (04/01/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 98 466 Td (04/01/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 168 466 Td (OPENING TRANSFER FROM OPERATING) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 475.96 466 Td (21,737.50) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 527.96 466 Td (193,389.70) Tj ET
+BT /F1 7.2 Tf 0.376 0.439 0.518 rg 168 455 Td (Reference: XFER-OPEN-0401) Tj ET
+q
+0.863 0.890 0.922 RG 0.45 w
+36 451 m 576 451 l S
+Q
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 44 438 Td (04/04/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 98 438 Td (04/04/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 168 438 Td (INTEREST CREDIT RESERVE SWEEP) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 487.98 438 Td (252.10) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 527.96 438 Td (193,641.80) Tj ET
+BT /F1 7.2 Tf 0.376 0.439 0.518 rg 168 427 Td (Reference: INT-RES-0404) Tj ET
+q
+0.863 0.890 0.922 RG 0.45 w
+36 423 m 576 423 l S
+Q
+q
+0.973 0.980 0.988 rg
+36 401 540 27 re f
+Q
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 44 410 Td (04/09/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 98 410 Td (04/09/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 168 410 Td (ROOF PROJECT DRAWDOWN) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 415.96 410 Td (18,653.13) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 527.96 410 Td (174,988.67) Tj ET
+BT /F1 7.2 Tf 0.376 0.439 0.518 rg 168 399 Td (Reference: ROOF-APR-01) Tj ET
+q
+0.863 0.890 0.922 RG 0.45 w
+36 395 m 576 395 l S
+Q
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 44 382 Td (04/16/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 98 382 Td (04/16/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 168 382 Td (CAPITAL REPAIR ESCROW TRANSFER) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 479.97 382 Td (8,460.00) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 527.96 382 Td (183,448.67) Tj ET
+BT /F1 7.2 Tf 0.376 0.439 0.518 rg 168 371 Td (Reference: CAP-ESC-0416) Tj ET
+q
+0.863 0.890 0.922 RG 0.45 w
+36 367 m 576 367 l S
+Q
+q
+0.973 0.980 0.988 rg
+36 345 540 27 re f
+Q
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 44 354 Td (04/24/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 98 354 Td (04/24/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 168 354 Td (HVAC REPLACEMENT INVOICE) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 415.96 354 Td (10,986.25) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 527.96 354 Td (172,462.42) Tj ET
+BT /F1 7.2 Tf 0.376 0.439 0.518 rg 168 343 Td (Reference: HVAC-APR-22) Tj ET
+q
+0.863 0.890 0.922 RG 0.45 w
+36 339 m 576 339 l S
+Q
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 44 326 Td (04/30/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 98 326 Td (04/30/2026) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 168 326 Td (MONTH END OPERATING TRANSFER) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 475.96 326 Td (14,863.75) Tj ET
+BT /F1 7.7 Tf 0.090 0.125 0.173 rg 527.96 326 Td (187,326.17) Tj ET
+BT /F1 7.2 Tf 0.376 0.439 0.518 rg 168 315 Td (Reference: XFER-RES-0430) Tj ET
+q
+0.863 0.890 0.922 RG 0.45 w
+36 311 m 576 311 l S
+Q
+q
+0.973 0.980 0.988 rg
+0.863 0.890 0.922 RG 0.7 w
+36 36 540 48 re B
+Q
+BT /F1 8 Tf 0.376 0.439 0.518 rg 48 67 Td (This source-style statement was generated for the BPO Reconciliation Agent POC) Tj ET
+BT /F1 8 Tf 0.376 0.439 0.518 rg 48 55 Td (from normalized transaction data.) Tj ET
+BT /F1 8 Tf 0.376 0.439 0.518 rg 48 43 Td (Please review debits, credits, references, and running balances before using this file in any demonstration.) Tj ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000321 00000 n 
+0000000396 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+6928
+%%EOF
