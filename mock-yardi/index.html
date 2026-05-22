@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mock Yardi Voyager</title>
+    <style>
+      :root {
+        color: #1e2d3b;
+        font-family: Arial, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #ffffff;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .yardi-login-page {
+        display: grid;
+        min-height: 100vh;
+        place-items: center;
+        background: #e8eef3;
+      }
+
+      .yardi-login-card {
+        display: grid;
+        gap: 0.9rem;
+        width: min(380px, calc(100vw - 2rem));
+        border: 1px solid #9eb4c5;
+        background: #ffffff;
+        box-shadow: 0 20px 60px rgba(38, 64, 82, 0.22);
+        padding: 1.4rem;
+      }
+
+      .yardi-login-card h1 {
+        margin: 0 0 0.4rem;
+        color: #007daf;
+        font-size: 1.5rem;
+        letter-spacing: 0;
+      }
+
+      .yardi-login-card label {
+        display: grid;
+        gap: 0.32rem;
+        color: #2d3b47;
+        font-size: 0.82rem;
+      }
+
+      .yardi-login-card input {
+        min-height: 36px;
+        border: 1px solid #9eb4c5;
+        border-radius: 0;
+        padding: 0.35rem 0.45rem;
+      }
+
+      .yardi-login-card button {
+        min-height: 38px;
+        border: 1px solid #006a96;
+        background: linear-gradient(#13a1cf, #007ba8);
+        color: #ffffff;
+        cursor: pointer;
+      }
+
+      .yardi-shell {
+        min-height: 100vh;
+        background: #ffffff;
+        color: #1e2d3b;
+      }
+
+      .yardi-header {
+        display: grid;
+        grid-template-columns: auto 1fr 180px;
+        gap: 1rem;
+        align-items: end;
+        min-height: 86px;
+        border-bottom: 1px solid #005e84;
+        background: linear-gradient(#17a4ce, #0078a8);
+        padding: 0.75rem 0.9rem;
+      }
+
+      .yardi-logo {
+        display: flex;
+        align-items: baseline;
+        gap: 0.08rem;
+        color: #ffffff;
+        font-size: 1.55rem;
+      }
+
+      .yardi-logo span {
+        color: #a8ddec;
+      }
+
+      .yardi-header nav {
+        display: flex;
+        gap: 0.75rem;
+      }
+
+      .yardi-header button {
+        border: 0;
+        background: transparent;
+        color: #ffffff;
+        cursor: pointer;
+        font-size: 0.78rem;
+      }
+
+      .yardi-header input {
+        height: 26px;
+        border: 1px solid #00698f;
+        border-radius: 0;
+        background: #0c709a;
+        color: #ffffff;
+        padding: 0.2rem 0.4rem;
+      }
+
+      .yardi-header input::placeholder {
+        color: #d4eef7;
+      }
+
+      .yardi-body {
+        display: grid;
+        grid-template-columns: 210px minmax(0, 1fr);
+        min-height: calc(100vh - 86px);
+      }
+
+      .yardi-sidebar {
+        display: grid;
+        align-content: start;
+        border-right: 1px solid #c2c9cf;
+        background: #eef0f2;
+        padding: 0.35rem 0;
+      }
+
+      .yardi-sidebar button,
+      .yardi-submenu button {
+        min-height: 24px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: #1f303d;
+        cursor: pointer;
+        padding: 0.25rem 0.75rem;
+        text-align: left;
+      }
+
+      .yardi-sidebar button.active {
+        background: #0083b2;
+        color: #ffffff;
+      }
+
+      .yardi-submenu {
+        display: grid;
+        margin-left: 1rem;
+        border: 1px solid #8999a6;
+        background: #d8e4ea;
+      }
+
+      .yardi-submenu button:hover,
+      .yardi-submenu button:focus {
+        background: #0097c9;
+        color: #ffffff;
+      }
+
+      .yardi-workspace {
+        padding: 0.9rem;
+      }
+
+      .yardi-workspace h2 {
+        margin: 0 0 0.9rem;
+        border-bottom: 1px solid #b4c4ce;
+        color: #253949;
+        font-size: 1rem;
+        letter-spacing: 0;
+      }
+
+      .yardi-summary {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-bottom: 1rem;
+      }
+
+      .yardi-summary article {
+        border-top: 20px solid #0089ba;
+        background: #f7f8f9;
+        padding: 0.5rem;
+      }
+
+      .yardi-summary h3 {
+        margin: -1.9rem 0 0.7rem;
+        color: #ffffff;
+        font-size: 0.78rem;
+      }
+
+      .yardi-summary p {
+        display: flex;
+        justify-content: space-between;
+        margin: 0.25rem 0;
+        border-bottom: 1px solid #d5d9dd;
+        gap: 1rem;
+      }
+
+      .yardi-grid-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        align-items: end;
+        margin-bottom: 0.8rem;
+        border: 1px solid #ccd4dc;
+        background: #f3f5f7;
+        padding: 0.6rem;
+      }
+
+      .yardi-grid-toolbar label {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+        font-size: 0.76rem;
+      }
+
+      .yardi-grid-toolbar input {
+        width: 120px;
+        height: 28px;
+        border: 1px solid #a8b0b7;
+        border-radius: 0;
+        padding: 0.2rem 0.35rem;
+      }
+
+      .yardi-grid-toolbar button {
+        min-width: 82px;
+        min-height: 26px;
+        border: 1px solid #a8b0b7;
+        border-radius: 0;
+        background: #ffffff;
+        cursor: pointer;
+      }
+
+      .yardi-message {
+        margin: 0.6rem 0;
+        border: 1px solid #77b68b;
+        background: #e8f7ed;
+        color: #12642b;
+        padding: 0.45rem 0.6rem;
+      }
+
+      .yardi-table {
+        width: min(760px, 100%);
+        border: 1px solid #aab5bd;
+        border-collapse: collapse;
+        background: #ffffff;
+      }
+
+      .yardi-table th,
+      .yardi-table td {
+        border: 1px solid #c8ced3;
+        padding: 0.24rem 0.38rem;
+        font-size: 0.74rem;
+      }
+
+      .yardi-table th {
+        background: #d9dee3;
+        color: #1f303d;
+      }
+
+      .yardi-table input[type="checkbox"] {
+        width: auto;
+      }
+
+      .yardi-table input:not([type="checkbox"]) {
+        height: 24px;
+        border: 1px solid #a8b0b7;
+        border-radius: 0;
+        padding: 0.1rem 0.25rem;
+      }
+
+      .yardi-empty {
+        max-width: 520px;
+        border: 1px solid #c7d2db;
+        background: #f7f9fb;
+        padding: 1rem;
+      }
+
+      @media (max-width: 760px) {
+        .yardi-header,
+        .yardi-body,
+        .yardi-summary {
+          grid-template-columns: 1fr;
+        }
+
+        .yardi-sidebar {
+          border-right: 0;
+          border-bottom: 1px solid #c2c9cf;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      const items = [
+        { id: "yardi-1", control: "DEP-778", date: "02/29/2024", memo: "ACH/XY Deposit", amount: "1,704.50" },
+        { id: "yardi-2", control: "DEP-881", date: "02/29/2024", memo: "PL Deposit 3169676", amount: "1,035.00" },
+        { id: "yardi-3", control: "CHK-404", date: "02/29/2024", memo: "CHECKscan Deposit", amount: "185.00" },
+        { id: "yardi-4", control: "REF-17", date: "02/29/2024", memo: "PL Deposit 3179166", amount: "1,750.00" },
+        { id: "yardi-5", control: "INT-22", date: "02/29/2024", memo: "PL Deposit 3195708", amount: "800.00" },
+      ];
+
+      const navGroups = [
+        "Roles",
+        "Reports",
+        "Charges",
+        "Receivables",
+        "Payables",
+        "Mortgage",
+        "G/L",
+        "Residential",
+        "Setup",
+        "Administration",
+        "Purchasing",
+      ];
+
+      const state = {
+        loggedIn: false,
+        bankingOpen: false,
+        screen: "home",
+        cleared: {},
+        message: "",
+      };
+
+      const app = document.getElementById("app");
+
+      function clearedCount() {
+        return Object.values(state.cleared).filter(Boolean).length;
+      }
+
+      function renderLogin() {
+        app.innerHTML = `
+          <main class="yardi-login-page">
+            <form class="yardi-login-card" data-testid="yardi-login-form">
+              <h1>YARDI VOYAGER</h1>
+              <label>
+                User name
+                <input data-testid="yardi-username" name="username" value="yardi.demo" />
+              </label>
+              <label>
+                Password
+                <input data-testid="yardi-password" name="password" value="password" type="password" />
+              </label>
+              <button data-testid="yardi-login" type="submit">Sign In</button>
+            </form>
+          </main>
+        `;
+
+        app.querySelector('[data-testid="yardi-login-form"]').addEventListener("submit", (event) => {
+          event.preventDefault();
+          state.loggedIn = true;
+          render();
+        });
+      }
+
+      function renderSidebar() {
+        const navButtons = navGroups.map((group) => `<button type="button">&gt; ${group}</button>`).join("");
+        const bankingClass = state.bankingOpen ? "active" : "";
+        const submenu = state.bankingOpen
+          ? `
+            <div class="yardi-submenu">
+              <button data-testid="yardi-bank-reconcile" type="button">Bank Reconcile</button>
+              <button type="button">Bank Functions</button>
+              <button type="button">Bank Adjustment</button>
+              <button type="button">Check Book Maintenance</button>
+            </div>
+          `
+          : "";
+
+        return `
+          <aside class="yardi-sidebar">
+            ${navButtons}
+            <button class="${bankingClass}" data-testid="yardi-banking-menu" type="button">&gt; Banking</button>
+            ${submenu}
+          </aside>
+        `;
+      }
+
+      function renderWorkspace() {
+        if (state.screen === "home") {
+          return `
+            <section class="yardi-workspace">
+              <div class="yardi-empty">
+                <h2>Dashboard</h2>
+                <p>Select Banking and open Bank Reconcile.</p>
+              </div>
+            </section>
+          `;
+        }
+
+        const rows = items
+          .map((item) => {
+            const checked = state.cleared[item.id] ? "checked" : "";
+            return `
+              <tr>
+                <td>${item.control}</td>
+                <td>${item.date}</td>
+                <td>${item.memo}</td>
+                <td>${item.amount}</td>
+                <td>
+                  <input
+                    aria-label="Clear ${item.control}"
+                    ${checked}
+                    data-id="${item.id}"
+                    data-testid="yardi-clear-checkbox"
+                    type="checkbox"
+                  />
+                </td>
+                <td><input aria-label="Clear date ${item.control}" value="02/29/2024" /></td>
+              </tr>
+            `;
+          })
+          .join("");
+
+        const saveMessage = state.message
+          ? `<p class="yardi-message" data-testid="yardi-save-message">${state.message}</p>`
+          : "";
+
+        return `
+          <section class="yardi-workspace">
+            <h2>Bank Reconcile</h2>
+            <section class="yardi-summary">
+              <article>
+                <h3>G/L Information</h3>
+                <p>Bank Account Name <strong>Hawthorne Hills</strong></p>
+                <p>G/L Balance <strong>10,003.77</strong></p>
+              </article>
+              <article>
+                <h3>Bank Information</h3>
+                <p>Balance Per Bank Statement <strong>13,071.96</strong></p>
+                <p>Outstanding Checks <strong>3,068.19</strong></p>
+              </article>
+              <article>
+                <h3>Item Totals</h3>
+                <p>Deposits <strong>31,620.00</strong></p>
+                <p>Bank Recon Items <strong>${clearedCount()}</strong></p>
+              </article>
+            </section>
+            <div class="yardi-grid-toolbar">
+              <label>Search <input aria-label="Search Number" /></label>
+              <button type="button">Refresh</button>
+              <button data-testid="yardi-select-all" type="button">Select All</button>
+              <button data-testid="yardi-unselect-all" type="button">Unselect All</button>
+              <button data-testid="yardi-save" type="button">Save</button>
+            </div>
+            ${saveMessage}
+            <table class="yardi-table">
+              <thead>
+                <tr>
+                  <th>Control</th>
+                  <th>Date</th>
+                  <th>Memo</th>
+                  <th>Amount</th>
+                  <th>Clear?</th>
+                  <th>Clear Date</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </section>
+        `;
+      }
+
+      function renderShell() {
+        app.innerHTML = `
+          <main class="yardi-shell">
+            <header class="yardi-header">
+              <div class="yardi-logo"><strong>YARDI</strong><span>VOYAGER</span></div>
+              <nav>
+                <button type="button">Home</button>
+                <button type="button">Help</button>
+                <button type="button">Sign Out</button>
+              </nav>
+              <input aria-label="Site Search" placeholder="Site Search" />
+            </header>
+            <div class="yardi-body">
+              ${renderSidebar()}
+              ${renderWorkspace()}
+            </div>
+          </main>
+        `;
+
+        app.querySelector('[data-testid="yardi-banking-menu"]').addEventListener("click", () => {
+          state.bankingOpen = !state.bankingOpen;
+          render();
+        });
+
+        const reconcileButton = app.querySelector('[data-testid="yardi-bank-reconcile"]');
+        if (reconcileButton) {
+          reconcileButton.addEventListener("click", () => {
+            state.screen = "reconcile";
+            state.message = "";
+            render();
+          });
+        }
+
+        const selectAll = app.querySelector('[data-testid="yardi-select-all"]');
+        if (selectAll) {
+          selectAll.addEventListener("click", () => {
+            state.cleared = Object.fromEntries(items.map((item) => [item.id, true]));
+            render();
+          });
+        }
+
+        const unselectAll = app.querySelector('[data-testid="yardi-unselect-all"]');
+        if (unselectAll) {
+          unselectAll.addEventListener("click", () => {
+            state.cleared = {};
+            state.message = "";
+            render();
+          });
+        }
+
+        const save = app.querySelector('[data-testid="yardi-save"]');
+        if (save) {
+          save.addEventListener("click", () => {
+            state.message = `${clearedCount()} item(s) marked reconciled.`;
+            render();
+          });
+        }
+
+        app.querySelectorAll('[data-testid="yardi-clear-checkbox"]').forEach((checkbox) => {
+          checkbox.addEventListener("change", (event) => {
+            state.cleared[event.target.dataset.id] = event.target.checked;
+            state.message = "";
+            render();
+          });
+        });
+      }
+
+      function render() {
+        if (state.loggedIn) {
+          renderShell();
+        } else {
+          renderLogin();
+        }
+      }
+
+      render();
+    </script>
+  </body>
+</html>
