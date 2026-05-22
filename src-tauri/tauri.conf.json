@@ -30,6 +30,9 @@
     "targets": ["nsis", "msi"],
     "publisher": "BPO Finance Operations",
     "copyright": "Copyright 2026 BPO Finance Operations",
+    "resources": [
+      "../automation-script/Yardi-Automation.ts"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

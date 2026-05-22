@@ -54,11 +54,11 @@ fn count(connection: &Connection, table: &str) -> i64 {
 
 #[test]
 fn visible_mock_browser_html_contains_automation_steps() {
-    let html = visible_mock_browser_html("C:\\Users\\inamul.haq\\Downloads\\Gmail-Agent.ts");
+    let html = visible_mock_browser_html("automation-script\\Yardi-Automation.ts");
 
     assert!(html.contains("Yardi Browser Automation"));
     assert!(html.contains("Open Yardi reconciliation workspace"));
-    assert!(html.contains("Gmail-Agent.ts"));
+    assert!(html.contains("Yardi-Automation.ts"));
 }
 
 #[test]
@@ -82,14 +82,14 @@ fn real_python_automation_script_is_executed_and_returns_output() {
 fn node_automation_script_is_copied_to_runtime_and_executed() {
     let source_dir = tempdir().expect("source temp dir");
     let runtime_dir = tempdir().expect("runtime temp dir");
-    let script_path = source_dir.path().join("Gmail-Agent.ts");
+    let script_path = source_dir.path().join("Yardi-Automation.ts");
     std::fs::write(
         &script_path,
         r#"
 import fs from "node:fs";
 import path from "node:path";
 
-const message: string = "gmail automation executed";
+const message: string = "yardi automation executed";
 fs.writeFileSync(path.join(process.cwd(), "marker.txt"), message);
 console.log(message);
 "#,
@@ -105,13 +105,13 @@ console.log(message);
 
     assert!(!result.mocked);
     assert_eq!(result.exit_code, Some(0));
-    assert!(runtime_dir.path().join("Gmail-Agent.ts").exists());
+    assert!(runtime_dir.path().join("Yardi-Automation.ts").exists());
     assert_eq!(
         std::fs::read_to_string(runtime_dir.path().join("marker.txt")).expect("marker"),
-        "gmail automation executed"
+        "yardi automation executed"
     );
     assert!(result
         .lines
         .iter()
-        .any(|line| line.contains("gmail automation executed")));
+        .any(|line| line.contains("yardi automation executed")));
 }

@@ -223,7 +223,7 @@ function reducer(state: AppState, action: Action): AppState {
       return updateRun(state, action.runId, (run) => ({
         ...run,
         status: "complete",
-        automationLogs: [...run.automationLogs, ...action.lines, "Final reconciliation completion recorded."],
+        automationLogs: [...run.automationLogs, ...action.lines],
         updatedAt: now(),
       }));
     case "set-report-path":

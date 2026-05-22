@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppData } from "../domain/types";
 
 const storageKey = "bpo-yardi-reconciliation-state";
-const defaultAutomationScript = "C:\\Users\\inamul.haq\\Downloads\\Gmail-Agent.ts";
+export const defaultAutomationScript = "automation-script\\Yardi-Automation.ts";
 
 const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 

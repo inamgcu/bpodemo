@@ -22,5 +22,5 @@ User actions update reducer state. The state provider persists a snapshot throug
 - Financial Data Parsing Agent: mocked PDF/Excel extraction, provenance, and logs.
 - Reconciliation Agent: deterministic matching by amount, date, reference, and direction.
 - Exception Review Agent: generates explanations and stores reviewer feedback.
-- Yardi Posting Automation: runs `Gmail-Agent.ts` from the Tauri backend through a local Node/Stagehand runtime, streams browser automation output to the approval screen, waits for completion, refocuses the desktop app, and records automation output in the run log.
+- Yardi Posting Automation: runs `Yardi-Automation.ts` from the Tauri backend through a local Node/Stagehand runtime, drives the local mock Yardi app, waits for completion, and refocuses the desktop app.
 - Summary Report Agent: exports an Excel report with summary, matches, exceptions, and transactions.

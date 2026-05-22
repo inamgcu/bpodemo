@@ -15,7 +15,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 
 const DATABASE_FILE: &str = "reconciliation.db";
-const DEFAULT_AUTOMATION_SCRIPT: &str = r"C:\Users\inamul.haq\Downloads\Gmail-Agent.ts";
+const DEFAULT_AUTOMATION_SCRIPT: &str = r"automation-script\Yardi-Automation.ts";
 const NODE_AUTOMATION_PACKAGES: [&str; 2] = ["tsx@4.21.0", "@browserbasehq/stagehand@3.4.0"];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -574,6 +574,45 @@ fn node_script_command(runtime_dir: &Path, script_file_name: &str, use_tsx: bool
     command
 }
 
+fn resolve_automation_script(app: &AppHandle, script_path: &str) -> Result<PathBuf, String> {
+    let requested = Path::new(script_path);
+    if requested.is_absolute() {
+        return if requested.exists() {
+            Ok(requested.to_path_buf())
+        } else {
+            Err(format!("Automation script was not found: {script_path}"))
+        };
+    }
+
+    let mut candidates = Vec::new();
+
+    if let Ok(current_dir) = std::env::current_dir() {
+        candidates.push(current_dir.join(requested));
+        if let Some(parent) = current_dir.parent() {
+            candidates.push(parent.join(requested));
+        }
+    }
+
+    let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .map(Path::to_path_buf);
+    if let Some(project_root) = project_root {
+        candidates.push(project_root.join(requested));
+    }
+
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        candidates.push(resource_dir.join(requested));
+        if let Some(file_name) = requested.file_name() {
+            candidates.push(resource_dir.join(file_name));
+        }
+    }
+
+    candidates
+        .into_iter()
+        .find(|candidate| candidate.exists())
+        .ok_or_else(|| format!("Automation script was not found: {script_path}"))
+}
+
 pub fn run_node_automation_script(
     script_path: &str,
     runtime_dir: impl AsRef<Path>,
@@ -584,7 +623,7 @@ pub fn run_node_automation_script(
     let use_tsx = packages.iter().any(|package| node_package_name(package) == "tsx");
     let mut result = command_output_lines_from_command(
         node_script_command(runtime_dir, &script_file_name, use_tsx),
-        "Gmail-Agent.ts completed without console output.",
+        "Yardi automation completed without console output.",
     )?;
     result.lines = setup_lines.into_iter().chain(result.lines).collect();
     Ok(result)
@@ -606,7 +645,7 @@ fn run_node_automation_script_with_events(
     let mut result = command_output_lines_with_events(
         app,
         node_script_command(runtime_dir, &script_file_name, use_tsx),
-        "Gmail-Agent.ts completed without console output.",
+        "Yardi automation completed without console output.",
     )?;
     result.lines = setup_lines.into_iter().chain(result.lines).collect();
     Ok(result)
@@ -739,10 +778,8 @@ fn open_visible_mock_browser(app: &AppHandle, script_path: &str) -> Result<Strin
 #[tauri::command]
 fn run_browser_automation(app: AppHandle, script_path: Option<String>, mock: Option<bool>) -> Result<BrowserAutomationResult, String> {
     let script = script_path.unwrap_or_else(|| DEFAULT_AUTOMATION_SCRIPT.to_string());
-    let script_path = Path::new(&script);
-    if !script_path.exists() {
-        return Err(format!("Automation script was not found: {script}"));
-    }
+    let script_path = resolve_automation_script(&app, &script)?;
+    let script = script_path.to_string_lossy().to_string();
     if mock.unwrap_or(true) {
         let validation = if script_path.extension().and_then(|value| value.to_str()) == Some("py") {
             command_output("python", &["-m", "py_compile", &script])
@@ -779,7 +816,7 @@ fn run_browser_automation(app: AppHandle, script_path: Option<String>, mock: Opt
             ))
         }
     };
-    let script_name = script_file_name(script_path)?;
+    let script_name = script_file_name(&script_path)?;
     let return_line = format!("Returned to BPO Yardi Reconciliation after {script_name} completed.");
     result
         .lines

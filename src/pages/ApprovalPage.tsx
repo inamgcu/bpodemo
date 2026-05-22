@@ -2,7 +2,7 @@ import { Play, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { MetricCard, StatusBadge, type ViewId } from "../components/Ui";
 import { summarizeRun } from "../domain/reconciliation";
-import { listenToAutomationLogs, runBrowserAutomation } from "../services/desktop";
+import { runBrowserAutomation } from "../services/desktop";
 import { useAppState } from "../state/AppStateContext";
 
 export function ApprovalPage({ onNavigate }: { onNavigate: (view: ViewId) => void }) {
@@ -14,32 +14,21 @@ export function ApprovalPage({ onNavigate }: { onNavigate: (view: ViewId) => voi
   async function approveAndMark() {
     if (!activeRun) return;
     dispatch({ type: "approve-run", runId: activeRun.id, actor: "Senior Reviewer", note });
-    dispatch({ type: "append-run-log", runId: activeRun.id, line: "Launching C:\\Users\\inamul.haq\\Downloads\\Gmail-Agent.ts..." });
+    dispatch({ type: "append-run-log", runId: activeRun.id, line: "Initiating automation..." });
     setRunning(true);
-    let unlisten: (() => void) | undefined;
-    let streamedLineCount = 0;
     try {
-      unlisten = await listenToAutomationLogs((line) => {
-        streamedLineCount += 1;
-        dispatch({ type: "append-run-log", runId: activeRun.id, line });
-      });
       const result = await runBrowserAutomation();
-      const lines = [
-        `Gmail-Agent.ts finished with exit code ${result.exitCode ?? "unknown"}.`,
-        ...(streamedLineCount ? [`Captured ${streamedLineCount} live automation log line(s).`] : result.lines),
-      ];
-      dispatch({ type: "complete-automation", runId: activeRun.id, lines });
+      dispatch({ type: "complete-automation", runId: activeRun.id, lines: [] });
       if (result.exitCode !== 0) {
-        dispatch({ type: "toast", tone: "warning", message: "Gmail-Agent.ts finished with errors. Review the automation logs in the report." });
+        dispatch({ type: "toast", tone: "warning", message: "Yardi automation finished with errors. Review the automation logs in the report." });
       }
       onNavigate("report");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to run browser automation.";
-      dispatch({ type: "append-run-log", runId: activeRun.id, line: `Gmail-Agent.ts failed to launch: ${message}` });
+      dispatch({ type: "append-run-log", runId: activeRun.id, line: `Yardi automation failed to launch: ${message}` });
       dispatch({ type: "toast", tone: "danger", message });
       onNavigate("report");
     } finally {
-      unlisten?.();
       setRunning(false);
     }
   }
@@ -66,10 +55,10 @@ export function ApprovalPage({ onNavigate }: { onNavigate: (view: ViewId) => voi
         </div>
         <textarea value={note} onChange={(event) => setNote(event.target.value)} />
         <div className="action-strip">
-          <button className="primary-button" type="button" disabled={running} onClick={approveAndMark}><Play size={16} />{running ? "Running Gmail-Agent.ts" : "Approve & Mark in Yardi"}</button>
+          <button className="primary-button" type="button" disabled={running} onClick={approveAndMark}><Play size={16} />{running ? "Running Yardi automation" : "Approve & Mark in Yardi"}</button>
         </div>
         <div className="log-box">
-          {activeRun.automationLogs.map((line, index) => <p key={`${line}-${index}`}>{line}</p>)}
+          <p>{running ? "Initiating automation..." : activeRun.status === "complete" ? "Automation complete." : "Ready to initiate automation."}</p>
         </div>
       </section>
     </main>
