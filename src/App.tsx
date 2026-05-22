@@ -1,13 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { navigation, type ViewId } from "./components/Ui";
+import { prewarmStartupAutomation } from "./services/desktop";
 import { useAppState } from "./state/AppStateContext";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PropertiesPage } from "./pages/PropertiesPage";
 import { ReconcilePage } from "./pages/ReconcilePage";
 import { ReportPage } from "./pages/ReportPage";
-import { ExceptionsPage } from "./pages/ExceptionsPage";
-import { ApprovalPage } from "./pages/ApprovalPage";
+import { SummaryPage } from "./pages/SummaryPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { MockYardiPage } from "./pages/MockYardiPage";
 
@@ -16,13 +16,26 @@ function ReconciliationApp() {
   const { state, dispatch } = useAppState();
   const currentTitle = useMemo(() => navigation.find((item) => item.id === view)?.label ?? "Dashboard", [view]);
 
+  useEffect(() => {
+    let cancelled = false;
+    prewarmStartupAutomation()
+      .then((lines) => {
+        if (!cancelled) console.info("Browser automation runtime prewarmed.", lines);
+      })
+      .catch((error) => {
+        if (!cancelled) console.warn("Browser automation startup prewarm failed.", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const page = {
     dashboard: <DashboardPage onNavigate={setView} />,
     properties: <PropertiesPage onNavigate={setView} />,
     reconcile: <ReconcilePage onNavigate={setView} />,
     report: <ReportPage onNavigate={setView} />,
-    exceptions: <ExceptionsPage />,
-    approval: <ApprovalPage onNavigate={setView} />,
+    summary: <SummaryPage onNavigate={setView} />,
     history: <HistoryPage onNavigate={setView} />,
   }[view];
 

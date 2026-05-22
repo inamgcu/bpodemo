@@ -109,6 +109,7 @@ export type RunStatus =
 export type ReconciliationRun = {
   id: string;
   propertyId: string;
+  bankId?: string;
   month: string;
   status: RunStatus;
   closingBalance?: number;

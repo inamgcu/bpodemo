@@ -5,10 +5,13 @@ import {
   getAgentCompletionNavigationView,
   getAgentProcessingLogs,
   getInitialExpandedPropertyId,
+  getMockSummaryNarrative,
   getReconciliationEvidence,
+  getReconciliationStartReadiness,
   getReportMatchGroups,
   getReportMatchRows,
   getReconciliationUploadSections,
+  getSelectedReconciliationBanks,
   getYardiLedgerAutomationButtonState,
 } from "./pageBehavior";
 
@@ -91,6 +94,42 @@ describe("page behavior", () => {
     expect(sections[1].rows).toEqual([
       expect.objectContaining({ title: "Yardi Ledger", uploaded: false }),
     ]);
+  });
+
+  it("filters upload sections to the bank selected during setup", () => {
+    const banks = [bank("bank-1", "Operating"), bank("bank-2", "Depository")];
+
+    const selected = getSelectedReconciliationBanks({
+      banks,
+      propertyId: "prop-1",
+      bankId: "bank-2",
+    });
+    const sections = getReconciliationUploadSections({
+      banks: selected,
+      files: [file("bank-1"), file("bank-2")],
+      ledgerUploaded: false,
+    });
+
+    expect(selected).toEqual([expect.objectContaining({ id: "bank-2" })]);
+    expect(sections[0].rows).toEqual([
+      expect.objectContaining({ bankId: "bank-2", title: "Depository", uploaded: true }),
+    ]);
+  });
+
+  it("only auto-starts reconciliation after selected bank, ledger, and balance are ready", () => {
+    expect(getReconciliationStartReadiness({
+      selectedBankCount: 1,
+      bankUploadCount: 1,
+      ledgerUploaded: true,
+      closingBalanceValue: "12500.50",
+    })).toEqual({ ready: true });
+
+    expect(getReconciliationStartReadiness({
+      selectedBankCount: 1,
+      bankUploadCount: 0,
+      ledgerUploaded: true,
+      closingBalanceValue: "12500.50",
+    })).toEqual({ ready: false, message: "Upload the selected bank statement before starting reconciliation." });
   });
 
   it("describes the Yardi Voyager ledger automation action", () => {
@@ -300,5 +339,21 @@ describe("page behavior", () => {
       expect.objectContaining({ id: "match-date", explanation: "" }),
     ]);
     expect(groups.mismatchRows).toEqual([]);
+  });
+
+  it("builds a mock AI summary narrative with run stats", () => {
+    const narrative = getMockSummaryNarrative({
+      status: "complete",
+      matched: 12,
+      mismatches: 3,
+      unresolved: 1,
+      closingVariance: 42.5,
+    });
+
+    expect(narrative).toContain("Mock AI summary");
+    expect(narrative).toContain("12 matched");
+    expect(narrative).toContain("3 mismatch");
+    expect(narrative).toContain("$42.50");
+    expect(narrative).toContain("1 item still needs reviewer follow-up");
   });
 });

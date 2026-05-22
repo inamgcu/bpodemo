@@ -40,7 +40,7 @@ type Action =
   | { type: "upsert-bank"; bank: BankAccount }
   | { type: "delete-bank"; bankId: string }
   | { type: "import-properties"; properties: Property[]; banks: BankAccount[]; fileName: string; validRows: number; invalidRows: number }
-  | { type: "start-run"; propertyId: string; month: string }
+  | { type: "start-run"; propertyId: string; month: string; bankId: string }
   | { type: "set-closing-balance"; runId: string; closingBalance: number }
   | { type: "attach-file"; runId: string; file: UploadedFile; transactions?: Transaction[]; log?: string }
   | { type: "append-run-log"; runId: string; line: string }
@@ -151,6 +151,7 @@ function reducer(state: AppState, action: Action): AppState {
       const run: ReconciliationRun = {
         id: `run-${action.propertyId}-${action.month}-${crypto.randomUUID()}`,
         propertyId: action.propertyId,
+        bankId: action.bankId,
         month: action.month,
         status: "uploads",
         createdAt: now(),
@@ -166,7 +167,7 @@ function reducer(state: AppState, action: Action): AppState {
         activeRunId: run.id,
         selectedPropertyId: action.propertyId,
         runs: [run, ...state.runs],
-        auditLogs: [...state.auditLogs, audit({ runId: run.id, actor: "BPO Operator", action: "Start reconciliation", detail: `${action.propertyId} / ${action.month}` })],
+        auditLogs: [...state.auditLogs, audit({ runId: run.id, actor: "BPO Operator", action: "Start reconciliation", detail: `${action.propertyId} / ${action.bankId} / ${action.month}` })],
       };
     }
     case "set-closing-balance":

@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost data:; style-src 'self' 'unsafe-inline';"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval'; img-src 'self' asset: https://asset.localhost data:; style-src 'self' 'unsafe-inline';"
     }
   },
   "bundle": {
@@ -32,6 +32,7 @@
     "copyright": "Copyright 2026 BPO Finance Operations",
     "resources": [
       "../automation-script/Yardi-Automation.ts",
+      "../automation-scripts/Yardi-Automation.ts",
       "../automation-scripts/Gmail-Agent.ts"
     ],
     "icon": [

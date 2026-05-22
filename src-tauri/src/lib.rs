@@ -15,7 +15,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 
 const DATABASE_FILE: &str = "reconciliation.db";
-const DEFAULT_AUTOMATION_SCRIPT: &str = r"automation-script\Yardi-Automation.ts";
+const DEFAULT_AUTOMATION_SCRIPT: &str = r"automation-scripts\Yardi-Automation.ts";
 const NODE_AUTOMATION_PACKAGES: [&str; 2] = ["tsx@4.21.0", "@browserbasehq/stagehand@3.4.0"];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -112,6 +112,7 @@ pub fn initialize_database(root: impl AsRef<Path>) -> Result<(), String> {
         CREATE TABLE IF NOT EXISTS reconciliation_runs (
           id TEXT PRIMARY KEY NOT NULL,
           property_id TEXT,
+          bank_id TEXT,
           month TEXT,
           status TEXT,
           closing_balance REAL,
@@ -197,6 +198,8 @@ pub fn initialize_database(root: impl AsRef<Path>) -> Result<(), String> {
         "#,
     ).map_err(to_error)?;
 
+    let _ = connection.execute("ALTER TABLE reconciliation_runs ADD COLUMN bank_id TEXT", []);
+
     connection.execute(
         "INSERT INTO settings (key, value, updated_at) VALUES ('schema_version', '1', ?1)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
@@ -241,9 +244,9 @@ fn sync_projection(tx: &Transaction<'_>, state: &Value) -> Result<(), String> {
 
     for run in array(state.get("runs")) {
         tx.execute(
-            "INSERT INTO reconciliation_runs (id, property_id, month, status, closing_balance, created_at, updated_at, approved_by, approved_at, final_report_path, raw_payload)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-            params![text(run, "id"), optional_text(run, "propertyId"), optional_text(run, "month"), optional_text(run, "status"), number(run, "closingBalance"), optional_text(run, "createdAt"), optional_text(run, "updatedAt"), optional_text(run, "approvedBy"), optional_text(run, "approvedAt"), optional_text(run, "finalReportPath"), raw(run)?],
+            "INSERT INTO reconciliation_runs (id, property_id, bank_id, month, status, closing_balance, created_at, updated_at, approved_by, approved_at, final_report_path, raw_payload)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            params![text(run, "id"), optional_text(run, "propertyId"), optional_text(run, "bankId"), optional_text(run, "month"), optional_text(run, "status"), number(run, "closingBalance"), optional_text(run, "createdAt"), optional_text(run, "updatedAt"), optional_text(run, "approvedBy"), optional_text(run, "approvedAt"), optional_text(run, "finalReportPath"), raw(run)?],
         ).map_err(to_error)?;
 
         for file in array(run.get("files")) {
@@ -341,6 +344,50 @@ fn export_report_file(app: AppHandle, file_name: String, base64_data: String) ->
     let bytes = general_purpose::STANDARD.decode(base64_data).map_err(to_error)?;
     fs::write(&target, bytes).map_err(to_error)?;
     Ok(target.to_string_lossy().to_string())
+}
+
+pub fn validate_exported_report_file(path: impl AsRef<Path>) -> Result<PathBuf, String> {
+    let target = path.as_ref();
+    if !target.exists() {
+        return Err(format!("Exported report does not exist: {}", target.display()));
+    }
+    if !target.is_file() {
+        return Err(format!("Exported report path is not a file: {}", target.display()));
+    }
+    Ok(target.to_path_buf())
+}
+
+#[cfg(target_os = "windows")]
+fn open_exported_report_with_default_app(path: &Path) -> Result<(), String> {
+    Command::new("explorer.exe")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("Unable to open exported report with Windows shell: {error}"))
+}
+
+#[cfg(target_os = "macos")]
+fn open_exported_report_with_default_app(path: &Path) -> Result<(), String> {
+    Command::new("open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("Unable to open exported report with macOS opener: {error}"))
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn open_exported_report_with_default_app(path: &Path) -> Result<(), String> {
+    Command::new("xdg-open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("Unable to open exported report with xdg-open: {error}"))
+}
+
+#[tauri::command]
+fn open_exported_report(path: String) -> Result<(), String> {
+    let target = validate_exported_report_file(path)?;
+    open_exported_report_with_default_app(&target)
 }
 
 fn command_output(program: &str, args: &[&str]) -> Result<(Option<i32>, String), String> {
@@ -776,6 +823,33 @@ fn open_visible_mock_browser(app: &AppHandle, script_path: &str) -> Result<Strin
 }
 
 #[tauri::command]
+fn prepare_browser_automation(app: AppHandle, script_path: Option<String>) -> Result<Vec<String>, String> {
+    let script = script_path.unwrap_or_else(|| DEFAULT_AUTOMATION_SCRIPT.to_string());
+    let script_path = resolve_automation_script(&app, &script)?;
+    let script = script_path.to_string_lossy().to_string();
+    let extension = script_path.extension().and_then(|value| value.to_str()).unwrap_or_default();
+    let runtime_dir = storage_dir(&app)?.join("node-automation-runtime");
+
+    match extension.to_ascii_lowercase().as_str() {
+        "py" => {
+            let validation = command_output("python", &["-m", "py_compile", &script])
+                .or_else(|_| command_output("py", &["-3", "-m", "py_compile", &script]))
+                .map(|(code, _)| format!("Validated Python automation script with exit code {:?}: {script}", code))
+                .unwrap_or_else(|_| format!("Python not available in PATH; automation script path exists: {script}"));
+            Ok(vec![validation])
+        }
+        "js" | "mjs" | "cjs" | "ts" | "mts" | "cts" => {
+            let (_, mut lines) = prepare_node_automation_script(&script, &runtime_dir, &NODE_AUTOMATION_PACKAGES)?;
+            lines.push(format!("Browser automation runtime ready for {script}."));
+            Ok(lines)
+        }
+        _ => Err(format!(
+            "Unsupported automation script type '.{extension}'. Use Python, JavaScript, or TypeScript."
+        )),
+    }
+}
+
+#[tauri::command]
 fn run_browser_automation(app: AppHandle, script_path: Option<String>, mock: Option<bool>) -> Result<BrowserAutomationResult, String> {
     let script = script_path.unwrap_or_else(|| DEFAULT_AUTOMATION_SCRIPT.to_string());
     let script_path = resolve_automation_script(&app, &script)?;
@@ -835,6 +909,8 @@ pub fn run() {
             save_app_state,
             get_storage_path,
             export_report_file,
+            open_exported_report,
+            prepare_browser_automation,
             run_browser_automation
         ])
         .run(tauri::generate_context!())

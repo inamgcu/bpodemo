@@ -203,6 +203,13 @@ async function main() {
   } finally {
     try {
       if (stagehand) {
+        const openPages = stagehand.context.pages();
+        for (const openPage of openPages) {
+          await openPage.close({ runBeforeUnload: false }).catch((closeErr) => {
+            console.error("Unable to close an open browser page:");
+            console.error(closeErr);
+          });
+        }
         await stagehand.close();
         console.log("Browser closed automatically.");
       }

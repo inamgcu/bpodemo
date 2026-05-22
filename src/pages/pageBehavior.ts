@@ -70,6 +70,19 @@ export type ReportMatchGroups = {
   mismatchRows: ReportMatchRow[];
 };
 
+export type SummaryNarrativeInput = {
+  status: string;
+  matched: number;
+  mismatches: number;
+  unresolved: number;
+  closingVariance: number;
+};
+
+export type ReconciliationStartReadiness = {
+  ready: boolean;
+  message?: string;
+};
+
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 export function getYardiLedgerAutomationButtonState(running: boolean) {
@@ -98,6 +111,39 @@ export function getAgentCompletionNavigationView(): "report" {
 export function getInitialExpandedPropertyId(selectedPropertyId: string) {
   void selectedPropertyId;
   return "";
+}
+
+export function getSelectedReconciliationBanks(input: {
+  banks: BankAccount[];
+  propertyId: string;
+  bankId?: string;
+}) {
+  const propertyBanks = input.banks.filter((bank) => bank.propertyId === input.propertyId);
+  const selected = propertyBanks.find((bank) => bank.id === input.bankId) ?? propertyBanks[0];
+  return selected ? [selected] : [];
+}
+
+export function getReconciliationStartReadiness(input: {
+  selectedBankCount: number;
+  bankUploadCount: number;
+  ledgerUploaded: boolean;
+  closingBalanceValue: string;
+}): ReconciliationStartReadiness {
+  const trimmedClosingBalance = input.closingBalanceValue.trim();
+  const closingBalance = Number(trimmedClosingBalance);
+  if (!input.selectedBankCount) {
+    return { ready: false, message: "Select a bank before starting reconciliation." };
+  }
+  if (!trimmedClosingBalance || !Number.isFinite(closingBalance)) {
+    return { ready: false, message: "Enter a valid closing balance." };
+  }
+  if (!input.bankUploadCount) {
+    return { ready: false, message: "Upload the selected bank statement before starting reconciliation." };
+  }
+  if (!input.ledgerUploaded) {
+    return { ready: false, message: "Upload or retrieve the Yardi ledger before starting reconciliation." };
+  }
+  return { ready: true };
 }
 
 export function getReconciliationUploadSections(input: {
@@ -291,4 +337,16 @@ export function getReportMatchGroups(input: {
     matchedRows: rows.filter((row) => row.status === "matched" && !row.isMismatch),
     mismatchRows: rows.filter(isMismatchRow),
   };
+}
+
+export function getMockSummaryNarrative(input: SummaryNarrativeInput) {
+  const varianceText = money(Math.abs(input.closingVariance));
+  const varianceDirection = input.closingVariance === 0
+    ? "no closing variance"
+    : `${varianceText} closing variance`;
+  const followUpText = input.unresolved === 0
+    ? "No items need reviewer follow-up."
+    : `${input.unresolved} item${input.unresolved === 1 ? "" : "s"} still needs reviewer follow-up.`;
+
+  return `Mock AI summary: This run is ${input.status}. The engine found ${input.matched} matched transaction${input.matched === 1 ? "" : "s"} and ${input.mismatches} mismatch${input.mismatches === 1 ? "" : "es"}, with ${varianceDirection}. ${followUpText}`;
 }

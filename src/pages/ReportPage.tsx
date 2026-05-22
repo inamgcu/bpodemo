@@ -1,9 +1,9 @@
-import { Download, FileSpreadsheet } from "lucide-react";
+import { Download, FileSpreadsheet, Play } from "lucide-react";
 import { useState } from "react";
 import { EmptyState, MetricCard, StatusBadge, type ViewId } from "../components/Ui";
 import { summarizeRun } from "../domain/reconciliation";
 import type { UserDecision } from "../domain/types";
-import { exportBinaryFile } from "../services/desktop";
+import { defaultAutomationScript, exportBinaryFile, listenToAutomationLogs, openExportedFile, runBrowserAutomation } from "../services/desktop";
 import { bytesToBase64, createReportWorkbook, reportFileName } from "../services/reports";
 import { useAppState } from "../state/AppStateContext";
 import { getReportMatchGroups, type ReportMatchRow } from "./pageBehavior";
@@ -22,13 +22,20 @@ export function ReportPage({ onNavigate }: { onNavigate: (view: ViewId) => void 
   const [feedbackTarget, setFeedbackTarget] = useState<ReportMatchRow | undefined>();
   const [feedbackDecision, setFeedbackDecision] = useState<UserDecision>("approve");
   const [feedback, setFeedback] = useState("");
+  const [approving, setApproving] = useState(false);
 
   async function exportReport() {
     if (!activeRun) return;
     const bytes = await createReportWorkbook(activeRun, activeProperty, propertyBanks);
     const path = await exportBinaryFile(reportFileName(activeRun, activeProperty), bytesToBase64(bytes));
     dispatch({ type: "set-report-path", runId: activeRun.id, path });
-    dispatch({ type: "toast", tone: "success", message: `Report exported: ${path}` });
+    try {
+      await openExportedFile(path);
+      dispatch({ type: "toast", tone: "success", message: `Report exported and opened: ${path}` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to open exported report automatically.";
+      dispatch({ type: "toast", tone: "warning", message: `Report exported but could not open automatically: ${message}` });
+    }
   }
 
   function openFeedback(row: ReportMatchRow) {
@@ -54,6 +61,54 @@ export function ReportPage({ onNavigate }: { onNavigate: (view: ViewId) => void 
     setFeedbackTarget(undefined);
   }
 
+  async function approveLedger() {
+    if (!activeRun) return;
+    setApproving(true);
+    dispatch({
+      type: "approve-run",
+      runId: activeRun.id,
+      actor: "Senior Reviewer",
+      note: "Ledger approved from reconciliation report.",
+    });
+    dispatch({
+      type: "append-run-log",
+      runId: activeRun.id,
+      line: `Launching ${defaultAutomationScript} to mark approved ledger items in Yardi...`,
+    });
+
+    let unlisten: (() => void) | undefined;
+    let streamedLineCount = 0;
+    try {
+      unlisten = await listenToAutomationLogs((line) => {
+        streamedLineCount += 1;
+        dispatch({ type: "append-run-log", runId: activeRun.id, line });
+      });
+      const result = await runBrowserAutomation();
+      const lines = [
+        `Yardi-Automation.ts finished with exit code ${result.exitCode ?? "unknown"}.`,
+        ...(streamedLineCount ? [`Captured ${streamedLineCount} live automation log line(s).`] : result.lines),
+        "Approval automation completed. Opening summary.",
+      ];
+      dispatch({ type: "complete-automation", runId: activeRun.id, lines });
+      dispatch({
+        type: "toast",
+        tone: result.exitCode === 0 ? "success" : "warning",
+        message: result.exitCode === 0
+          ? "Ledger approved and Yardi automation completed."
+          : "Yardi automation finished with errors. Review the summary logs.",
+      });
+      onNavigate("summary");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to run Yardi automation.";
+      dispatch({ type: "append-run-log", runId: activeRun.id, line: `Yardi-Automation.ts failed to launch: ${message}` });
+      dispatch({ type: "toast", tone: "danger", message });
+      onNavigate("summary");
+    } finally {
+      unlisten?.();
+      setApproving(false);
+    }
+  }
+
   if (!activeRun || !summary) {
     return <main className="page"><section className="panel padded">Start a reconciliation run to view a report.</section></main>;
   }
@@ -73,8 +128,9 @@ export function ReportPage({ onNavigate }: { onNavigate: (view: ViewId) => void 
           <FileSpreadsheet size={22} />
         </div>
         <div className="action-strip">
-          <button className="secondary-button" type="button" onClick={() => onNavigate("exceptions")}>Review Exceptions</button>
-          <button className="secondary-button" type="button" onClick={() => onNavigate("approval")}>Approval Gate</button>
+          <button className="secondary-button" type="button" disabled={approving} onClick={approveLedger}>
+            <Play size={16} />{approving ? "Approving Ledger" : "Approve Ledger"}
+          </button>
           <button className="primary-button" type="button" onClick={exportReport}><Download size={16} />Export Report</button>
         </div>
         {activeRun.finalReportPath ? <p className="success-text padded">Exported: {activeRun.finalReportPath}</p> : null}

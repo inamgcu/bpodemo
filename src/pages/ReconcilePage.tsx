@@ -1,9 +1,9 @@
 import { Calendar, CheckCircle2, FileText, FileUp, ListChecks, Play } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EmptyState, MetricCard, StatusBadge, type ViewId } from "../components/Ui";
 import { getMaxReconciliationMonth, isAllowedReconciliationMonth } from "../domain/month";
 import { importLedgerWorkbook } from "../services/fileImport";
-import { ledgerAutomationScript, listenToAutomationLogs, runBrowserAutomation } from "../services/desktop";
+import { ledgerAutomationScript, listenToAutomationLogs, prewarmBrowserAutomation, runBrowserAutomation } from "../services/desktop";
 import { mockBankStatementTransactions, mockLedgerTransactions, uploadedFile } from "../services/mockFiles";
 import { useAppState } from "../state/AppStateContext";
 import {
@@ -12,7 +12,9 @@ import {
   getAgentProcessingLogs,
   getExtractionSplitPanes,
   getReconciliationEvidence,
+  getReconciliationStartReadiness,
   getReconciliationUploadSections,
+  getSelectedReconciliationBanks,
   getYardiLedgerAutomationButtonState,
 } from "./pageBehavior";
 
@@ -23,14 +25,24 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
   const { state, activeRun, dispatch } = useAppState();
   const [step, setStep] = useState(1);
   const [propertyId, setPropertyId] = useState(state.selectedPropertyId);
+  const [bankId, setBankId] = useState(() => state.banks.find((bank) => bank.propertyId === state.selectedPropertyId)?.id ?? "");
   const [month, setMonth] = useState(getMaxReconciliationMonth());
   const [closingBalance, setClosingBalance] = useState("");
   const [processing, setProcessing] = useState(false);
   const [ledgerAutomationRunning, setLedgerAutomationRunning] = useState(false);
+  const prewarmedRunIds = useRef(new Set<string>());
   const maxMonth = getMaxReconciliationMonth();
   const selectedBanks = useMemo(() => state.banks.filter((bank) => bank.propertyId === propertyId), [propertyId, state.banks]);
-  const runBanks = activeRun ? state.banks.filter((bank) => bank.propertyId === activeRun.propertyId) : selectedBanks;
-  const bankUploadCount = activeRun?.files.filter((file) => file.kind === "bank-statement").length ?? 0;
+  const runBanks = useMemo(
+    () => activeRun
+      ? getSelectedReconciliationBanks({ banks: state.banks, propertyId: activeRun.propertyId, bankId: activeRun.bankId })
+      : getSelectedReconciliationBanks({ banks: state.banks, propertyId, bankId }),
+    [activeRun, bankId, propertyId, state.banks],
+  );
+  const selectedRunBankId = activeRun?.bankId ?? runBanks[0]?.id;
+  const bankUploadCount = activeRun?.files.filter((file) =>
+    file.kind === "bank-statement" && (!selectedRunBankId || file.bankId === selectedRunBankId)
+  ).length ?? 0;
   const ledgerUploaded = Boolean(activeRun?.files.some((file) => file.kind === "yardi-ledger"));
   const uploadSections = useMemo(
     () => getReconciliationUploadSections({
@@ -42,6 +54,7 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
   );
   const bankSection = uploadSections.find((section) => section.id === "bank-statements");
   const ledgerSection = uploadSections.find((section) => section.id === "yardi-ledger");
+  const activeRunId = activeRun?.id;
   const evidence = useMemo(
     () => activeRun
       ? getReconciliationEvidence({ transactions: activeRun.transactions, matches: activeRun.matches })
@@ -51,18 +64,75 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
   const extractionPanes = useMemo(() => getExtractionSplitPanes(evidence), [evidence]);
   const ledgerAutomationButton = getYardiLedgerAutomationButtonState(ledgerAutomationRunning);
 
+  useEffect(() => {
+    if (step !== 2 || !activeRunId || prewarmedRunIds.current.has(activeRunId)) return;
+    prewarmedRunIds.current.add(activeRunId);
+    let cancelled = false;
+    dispatch({
+      type: "append-run-log",
+      runId: activeRunId,
+      line: "Preparing browser automation runtime in the background...",
+    });
+    prewarmBrowserAutomation(ledgerAutomationScript)
+      .then((lines) => {
+        if (cancelled) return;
+        for (const line of lines) {
+          dispatch({ type: "append-run-log", runId: activeRunId, line });
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : "Unable to prepare browser automation runtime.";
+        dispatch({ type: "append-run-log", runId: activeRunId, line: `Browser automation runtime preparation skipped: ${message}` });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRunId, dispatch, step]);
+
+  function closingBalanceCandidate() {
+    return closingBalance.trim() || (activeRun?.closingBalance !== undefined ? String(activeRun.closingBalance) : "");
+  }
+
+  function validateAndSaveBalance(ledgerReady = ledgerUploaded) {
+    if (!activeRun) return false;
+    const value = closingBalanceCandidate();
+    const readiness = getReconciliationStartReadiness({
+      selectedBankCount: runBanks.length,
+      bankUploadCount,
+      ledgerUploaded: ledgerReady,
+      closingBalanceValue: value,
+    });
+    if (!readiness.ready) {
+      dispatch({ type: "toast", tone: "warning", message: readiness.message ?? "Reconciliation inputs are incomplete." });
+      return false;
+    }
+    dispatch({ type: "set-closing-balance", runId: activeRun.id, closingBalance: Number(value) });
+    return true;
+  }
+
   function startRun() {
     if (!isAllowedReconciliationMonth(month)) {
       dispatch({ type: "toast", tone: "danger", message: `Month must be ${maxMonth} or earlier.` });
       return;
     }
-    dispatch({ type: "start-run", propertyId, month });
+    if (!bankId) {
+      dispatch({ type: "toast", tone: "danger", message: "Select a bank before starting reconciliation." });
+      return;
+    }
+    dispatch({ type: "start-run", propertyId, month, bankId });
     setStep(2);
   }
 
+  function changeProperty(nextPropertyId: string) {
+    setPropertyId(nextPropertyId);
+    setBankId(state.banks.find((bank) => bank.propertyId === nextPropertyId)?.id ?? "");
+  }
+
   function saveBalance() {
-    const parsed = Number(closingBalance);
-    if (!activeRun || !Number.isFinite(parsed)) {
+    const value = closingBalanceCandidate();
+    const parsed = Number(value);
+    if (!activeRun || !value || !Number.isFinite(parsed)) {
       dispatch({ type: "toast", tone: "danger", message: "Enter a valid closing balance." });
       return false;
     }
@@ -130,6 +200,20 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
     attachLedgerSample();
   }
 
+  async function runAgentPipeline(runId: string) {
+    setStep(3);
+    setProcessing(true);
+    const logs = getAgentProcessingLogs();
+    for (const line of logs.slice(0, -1)) {
+      dispatch({ type: "append-run-log", runId, line });
+      await delay(180);
+    }
+    dispatch({ type: "process-run", runId });
+    dispatch({ type: "append-run-log", runId, line: logs.at(-1) ?? "Calculation completed." });
+    setProcessing(false);
+    onNavigate(getAgentCompletionNavigationView());
+  }
+
   async function getLedgerFromYardiVoyager() {
     if (!activeRun) return;
     setLedgerAutomationRunning(true);
@@ -158,13 +242,29 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
         `yardi-voyager-ledger-${activeRun.month}.xlsx`,
         "Yardi Voyager ledger retrieved by browser automation. Sample ledger normalized and saved to database.",
       );
-      dispatch({
-        type: "toast",
-        tone: result.exitCode === 0 ? "success" : "warning",
-        message: result.exitCode === 0
-          ? "Yardi Voyager ledger retrieved and loaded."
-          : "Browser automation returned a non-zero exit code. Sample ledger was still loaded for review.",
+      const readiness = getReconciliationStartReadiness({
+        selectedBankCount: runBanks.length,
+        bankUploadCount,
+        ledgerUploaded: true,
+        closingBalanceValue: closingBalanceCandidate(),
       });
+      if (readiness.ready && validateAndSaveBalance(true)) {
+        dispatch({ type: "append-run-log", runId: activeRun.id, line: "Yardi ledger retrieval completed. Auto-starting reconciliation." });
+        dispatch({
+          type: "toast",
+          tone: result.exitCode === 0 ? "success" : "warning",
+          message: result.exitCode === 0
+            ? "Yardi Voyager ledger retrieved. Reconciliation started automatically."
+            : "Browser automation returned a non-zero exit code. Sample ledger loaded and reconciliation started for review.",
+        });
+        await runAgentPipeline(activeRun.id);
+      } else {
+        dispatch({
+          type: "toast",
+          tone: "warning",
+          message: `Yardi Voyager ledger loaded. ${readiness.message ?? "Complete the remaining inputs to start reconciliation."}`,
+        });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to retrieve ledger from Yardi Voyager.";
       dispatch({ type: "append-run-log", runId: activeRun.id, line: `Gmail-Agent.ts failed to launch: ${message}` });
@@ -177,22 +277,8 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
 
   async function processRun() {
     if (!activeRun) return;
-    if (!saveBalance()) return;
-    if (!bankUploadCount || !ledgerUploaded) {
-      dispatch({ type: "toast", tone: "warning", message: "Upload bank statements and a ledger before starting reconciliation." });
-      return;
-    }
-    setStep(3);
-    setProcessing(true);
-    const logs = getAgentProcessingLogs();
-    for (const line of logs.slice(0, -1)) {
-      dispatch({ type: "append-run-log", runId: activeRun.id, line });
-      await delay(180);
-    }
-    dispatch({ type: "process-run", runId: activeRun.id });
-    dispatch({ type: "append-run-log", runId: activeRun.id, line: logs.at(-1) ?? "Calculation completed." });
-    setProcessing(false);
-    onNavigate(getAgentCompletionNavigationView());
+    if (!validateAndSaveBalance()) return;
+    await runAgentPipeline(activeRun.id);
   }
 
   function renderExtractionRows(rows: EvidenceRow[], mode: "bank" | "ledger") {
@@ -246,7 +332,7 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
       </section>
 
       <section className="summary-grid">
-        <MetricCard label="Bank sections" value={runBanks.length} detail="one upload lane per bank" />
+        <MetricCard label="Selected bank" value={runBanks[0]?.name ?? "None"} detail="one upload lane" />
         <MetricCard label="Statements" value={bankUploadCount} detail="PDF uploads or samples" />
         <MetricCard label="Ledger" value={ledgerUploaded ? "Ready" : "Missing"} detail="Excel upload required" />
         <MetricCard label="Month max" value={maxMonth} detail="M-1 guardrail" />
@@ -259,11 +345,14 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
             <Calendar size={22} />
           </div>
           <div className="form-grid">
-            <select value={propertyId} onChange={(event) => setPropertyId(event.target.value)}>
+            <select value={propertyId} onChange={(event) => changeProperty(event.target.value)}>
               {state.properties.map((property) => <option key={property.id} value={property.id}>{property.name}</option>)}
             </select>
+            <select value={bankId} disabled={!selectedBanks.length} onChange={(event) => setBankId(event.target.value)}>
+              {selectedBanks.map((bank) => <option key={bank.id} value={bank.id}>{bank.name} / {bank.accountNumber}</option>)}
+            </select>
             <input type="month" value={month} max={maxMonth} onChange={(event) => setMonth(event.target.value)} />
-            <button className="primary-button" type="button" disabled={!isAllowedReconciliationMonth(month)} onClick={startRun}>
+            <button className="primary-button" type="button" disabled={!bankId || !isAllowedReconciliationMonth(month)} onClick={startRun}>
               <CheckCircle2 size={16} />Next
             </button>
           </div>
@@ -362,7 +451,6 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
           </section>
 
           <div className="action-strip action-strip--end">
-            {activeRun.matches.length ? <button className="secondary-button" type="button" onClick={() => onNavigate("report")}><ListChecks size={16} />Open Reconciliation Report</button> : null}
             <button className="primary-button" type="button" onClick={processRun}><Play size={16} />Start Reconciliation</button>
           </div>
         </>

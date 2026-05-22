@@ -1,6 +1,6 @@
 use bpo_yardi_reconciliation_lib::{
     database_path, load_state, run_node_automation_script, run_python_automation_script, save_state,
-    visible_mock_browser_html,
+    validate_exported_report_file, visible_mock_browser_html,
 };
 use rusqlite::Connection;
 use serde_json::json;
@@ -15,6 +15,7 @@ fn persists_snapshot_and_projection_tables() {
         "runs": [{
             "id": "run-1",
             "propertyId": "prop-1",
+            "bankId": "bank-1",
             "month": "2026-04",
             "status": "complete",
             "closingBalance": 1200,
@@ -38,6 +39,12 @@ fn persists_snapshot_and_projection_tables() {
     assert_eq!(count(&connection, "properties"), 1);
     assert_eq!(count(&connection, "banks"), 1);
     assert_eq!(count(&connection, "reconciliation_runs"), 1);
+    assert_eq!(
+        connection
+            .query_row("SELECT bank_id FROM reconciliation_runs WHERE id = 'run-1'", [], |row| row.get::<_, String>(0))
+            .expect("run bank id"),
+        "bank-1"
+    );
     assert_eq!(count(&connection, "transactions"), 1);
     assert_eq!(count(&connection, "exceptions"), 1);
     assert_eq!(count(&connection, "ai_reasoning"), 1);
@@ -50,6 +57,24 @@ fn count(connection: &Connection, table: &str) -> i64 {
     connection
         .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| row.get(0))
         .expect("count")
+}
+
+#[test]
+fn exported_report_open_validation_requires_a_real_file() {
+    let dir = tempdir().expect("temp dir");
+    let report_path = dir.path().join("reconciliation.xlsx");
+    let missing_path = dir.path().join("missing.xlsx");
+
+    assert!(validate_exported_report_file(&missing_path)
+        .expect_err("missing report should fail")
+        .contains("does not exist"));
+
+    std::fs::write(&report_path, "mock workbook bytes").expect("write report");
+
+    assert_eq!(
+        validate_exported_report_file(&report_path).expect("valid report"),
+        report_path
+    );
 }
 
 #[test]

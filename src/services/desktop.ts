@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppData } from "../domain/types";
 
 const storageKey = "bpo-yardi-reconciliation-state";
-export const defaultAutomationScript = "automation-script\\Yardi-Automation.ts";
+export const defaultAutomationScript = "automation-scripts\\Yardi-Automation.ts";
 export const ledgerAutomationScript = "automation-scripts\\Gmail-Agent.ts";
 
 const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -12,6 +12,19 @@ export type BrowserAutomationResult = {
   exitCode?: number | null;
   lines: string[];
 };
+
+type OpenExportedFileOptions = {
+  isDesktop?: boolean;
+  openPath?: (path: string) => Promise<void>;
+  openReport?: (path: string) => Promise<void>;
+};
+
+type PrewarmStartupAutomationOptions = {
+  scripts?: string[];
+  prewarm?: (scriptPath: string) => Promise<string[]>;
+};
+
+let startupAutomationPrewarm: Promise<string[]> | undefined;
 
 export async function loadState(): Promise<AppData | null> {
   if (isTauri()) return await invoke<AppData | null>("load_app_state");
@@ -41,6 +54,67 @@ export async function exportBinaryFile(fileName: string, base64Data: string) {
   link.download = fileName;
   link.click();
   return `Downloaded ${fileName}`;
+}
+
+export async function openExportedFile(path: string, options: OpenExportedFileOptions = {}) {
+  const desktop = options.isDesktop ?? isTauri();
+  if (!desktop) return `Browser download ready: ${path}`;
+
+  const failures: string[] = [];
+  const openPath = options.openPath ?? (await import("@tauri-apps/plugin-opener")).openPath;
+  try {
+    await openPath(path);
+    return `Opened ${path}`;
+  } catch (error) {
+    failures.push(describeOpenError(error));
+  }
+
+  const openReport = options.openReport ?? (async (targetPath: string) => {
+    await invoke("open_exported_report", { path: targetPath });
+  });
+  try {
+    await openReport(path);
+  } catch (error) {
+    failures.push(describeOpenError(error));
+    throw new Error(`Unable to open exported report automatically. ${failures.filter(Boolean).join(" ")}`.trim(), {
+      cause: error,
+    });
+  }
+
+  return `Opened ${path}`;
+}
+
+function describeOpenError(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "The desktop opener rejected the file path.";
+}
+
+export async function prewarmBrowserAutomation(scriptPath?: string) {
+  if (!isTauri()) {
+    return [`Browser automation runtime ready for ${scriptPath ?? defaultAutomationScript}.`];
+  }
+  return await invoke<string[]>("prepare_browser_automation", { scriptPath });
+}
+
+export function startupAutomationScripts() {
+  return [ledgerAutomationScript, defaultAutomationScript];
+}
+
+export async function prewarmStartupAutomation(options: PrewarmStartupAutomationOptions = {}) {
+  const scripts = options.scripts ?? startupAutomationScripts();
+  const prewarm = options.prewarm ?? prewarmBrowserAutomation;
+  const run = async () => {
+    const lines: string[] = [];
+    for (const script of scripts) {
+      lines.push(...await prewarm(script));
+    }
+    return lines;
+  };
+
+  if (options.scripts || options.prewarm) return await run();
+  startupAutomationPrewarm ??= run();
+  return await startupAutomationPrewarm;
 }
 
 export async function runBrowserAutomation(scriptPath?: string) {
@@ -74,6 +148,8 @@ export async function runBrowserAutomation(scriptPath?: string) {
       </script>
     </body>
   `);
+  page?.document.close();
+  window.setTimeout(() => page?.close(), 2200);
   return {
     mocked: true,
     exitCode: 0,
