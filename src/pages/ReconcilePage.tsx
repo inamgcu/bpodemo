@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { EmptyState, MetricCard, StatusBadge, type ViewId } from "../components/Ui";
 import { getMaxReconciliationMonth, isAllowedReconciliationMonth } from "../domain/month";
 import { importLedgerWorkbook } from "../services/fileImport";
-import { listenToAutomationLogs, runBrowserAutomation } from "../services/desktop";
+import { ledgerAutomationScript, listenToAutomationLogs, runBrowserAutomation } from "../services/desktop";
 import { mockBankStatementTransactions, mockLedgerTransactions, uploadedFile } from "../services/mockFiles";
 import { useAppState } from "../state/AppStateContext";
 import {
@@ -145,7 +145,7 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
         streamedLineCount += 1;
         dispatch({ type: "append-run-log", runId: activeRun.id, line });
       });
-      const result = await runBrowserAutomation();
+      const result = await runBrowserAutomation(ledgerAutomationScript);
       const lines = [
         `Gmail-Agent.ts finished with exit code ${result.exitCode ?? "unknown"}.`,
         ...(streamedLineCount ? [`Captured ${streamedLineCount} live automation log line(s).`] : result.lines),

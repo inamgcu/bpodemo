@@ -8,7 +8,7 @@ Standalone Tauri + React + TypeScript desktop reconciliation application for the
 - Desktop: Tauri v2
 - Local persistence: SQLite through the Tauri backend
 - Reports and sample workbooks: ExcelJS
-- Browser automation hook: `C:\Users\inamul.haq\Downloads\Gmail-Agent.ts` for packaged desktop runs
+- Browser automation hook: `automation-script\Yardi-Automation.ts` for packaged desktop runs
 
 ## Run Locally
 
@@ -58,7 +58,7 @@ Generated artifacts:
 5. Report screen with matched, unmatched, ambiguous, and closing-balance metrics.
 6. Exception review with AI reasoning, confidence, reviewer approval/rejection/edit feedback, and local learning trail.
 7. Human approval gate before Yardi marking.
-8. Tauri command that runs the provided TypeScript Stagehand automation script, shows live logs, waits for completion, refocuses the desktop app, and shows the final report.
+8. Tauri command that runs the local mock-Yardi Stagehand automation, waits for completion, refocuses the desktop app, and shows the final report.
 9. Audit history with previous runs, statuses, exception counts, user actions, reopen, and export.
 
 ## SQLite Schema
@@ -72,6 +72,6 @@ The packaged app stores `reconciliation.db` under the platform app-data director
 - V1 data ingestion is import-based. No external bank/Yardi APIs are called.
 - PDF parsing is deterministic mock OCR for demo use.
 - Reconciliation is deterministic and explainable rather than an external LLM call.
-- In the packaged Tauri app, browser automation runs `C:\Users\inamul.haq\Downloads\Gmail-Agent.ts`. The backend copies the script into an app-data Node runtime, installs `tsx` and `@browserbasehq/stagehand` there when missing, streams script output to the approval screen, waits for the script to finish, returns focus to the desktop window, records output logs, and navigates to the report. Node.js/npm must be available on the Windows machine for this external TypeScript automation hook.
+- In the packaged Tauri app, browser automation runs `automation-script\Yardi-Automation.ts`. The backend copies the script into an app-data Node runtime, installs `tsx` and `@browserbasehq/stagehand` there when missing, waits for the script to finish, returns focus to the desktop window, and navigates to the report. Node.js/npm must be available on the Windows machine for this TypeScript automation hook.
 - Exception feedback is stored locally and represented as reusable reviewer memory.
 - All financial data, reports, audit logs, and uploaded-file metadata remain local.

@@ -9,8 +9,9 @@ import { ReportPage } from "./pages/ReportPage";
 import { ExceptionsPage } from "./pages/ExceptionsPage";
 import { ApprovalPage } from "./pages/ApprovalPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { MockYardiPage } from "./pages/MockYardiPage";
 
-function App() {
+function ReconciliationApp() {
   const [view, setView] = useState<ViewId>("dashboard");
   const { state, dispatch } = useAppState();
   const currentTitle = useMemo(() => navigation.find((item) => item.id === view)?.label ?? "Dashboard", [view]);
@@ -59,6 +60,10 @@ function App() {
       </section>
     </div>
   );
+}
+
+function App() {
+  return window.location.pathname === "/mock-yardi" ? <MockYardiPage /> : <ReconciliationApp />;
 }
 
 export default App;

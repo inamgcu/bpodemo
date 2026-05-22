@@ -812,3 +812,261 @@ th {
     white-space: nowrap;
   }
 }
+
+.yardi-login-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: #e8eef3;
+}
+
+.yardi-login-card {
+  display: grid;
+  gap: 0.9rem;
+  width: min(380px, calc(100vw - 2rem));
+  border: 1px solid #9eb4c5;
+  background: #fff;
+  padding: 1.4rem;
+  box-shadow: 0 16px 34px rgba(30, 45, 62, 0.18);
+}
+
+.yardi-login-card h1 {
+  margin: 0 0 0.4rem;
+  color: #007daf;
+  font-size: 1.5rem;
+  letter-spacing: 0;
+}
+
+.yardi-login-card label {
+  display: grid;
+  gap: 0.32rem;
+  color: #2d3b47;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.yardi-login-card button {
+  min-height: 38px;
+  border: 1px solid #006a96;
+  background: linear-gradient(#13a1cf, #007ba8);
+  color: #fff;
+  font-weight: 850;
+}
+
+.yardi-shell {
+  min-height: 100vh;
+  background: #fff;
+  color: #1e2d3b;
+  font-family: Arial, "Segoe UI", sans-serif;
+}
+
+.yardi-header {
+  display: grid;
+  grid-template-columns: auto 1fr 180px;
+  gap: 1rem;
+  align-items: end;
+  height: 86px;
+  border-bottom: 1px solid #7aa6bb;
+  background: linear-gradient(#00a5d8, #0079a6);
+  padding: 0.9rem 1.1rem;
+  color: #fff;
+}
+
+.yardi-logo {
+  display: flex;
+  align-items: baseline;
+  gap: 0.08rem;
+  font-size: 1.55rem;
+}
+
+.yardi-logo span {
+  color: #a8ddec;
+}
+
+.yardi-header nav {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.yardi-header button {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.yardi-header input {
+  height: 26px;
+  border-color: #00698f;
+  border-radius: 0;
+  background: #0c709a;
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+}
+
+.yardi-header input::placeholder {
+  color: #d4eef7;
+}
+
+.yardi-body {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  min-height: calc(100vh - 86px);
+}
+
+.yardi-sidebar {
+  display: grid;
+  align-content: start;
+  border-right: 1px solid #c2c9cf;
+  background: #eef0f2;
+  padding: 1.8rem 0.75rem;
+}
+
+.yardi-sidebar button,
+.yardi-submenu button {
+  min-height: 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #243647;
+  padding: 0.1rem 0.25rem;
+  font-size: 0.76rem;
+  text-align: left;
+}
+
+.yardi-sidebar button.active {
+  background: #0083b2;
+  color: #fff;
+}
+
+.yardi-submenu {
+  display: grid;
+  margin-left: 1rem;
+  border: 1px solid #8999a6;
+  background: #d8e4ea;
+}
+
+.yardi-submenu button:hover,
+.yardi-submenu button:focus {
+  background: #0097c9;
+  color: #fff;
+}
+
+.yardi-workspace {
+  padding: 0.9rem;
+}
+
+.yardi-workspace h2 {
+  margin: 0 0 0.9rem;
+  border-bottom: 1px solid #b4c4ce;
+  color: #253949;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.yardi-summary {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 1rem;
+}
+
+.yardi-summary article {
+  border-top: 20px solid #0089ba;
+  background: #f7f8f9;
+  padding: 0.5rem;
+}
+
+.yardi-summary h3 {
+  margin: -1.9rem 0 0.7rem;
+  color: #fff;
+  font-size: 0.78rem;
+}
+
+.yardi-summary p {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.25rem 0;
+  border-bottom: 1px solid #d5d9dd;
+  font-size: 0.75rem;
+}
+
+.yardi-grid-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: end;
+  border-top: 18px solid #0089ba;
+  background: #eef2f5;
+  padding: 0.55rem;
+}
+
+.yardi-grid-toolbar label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.76rem;
+}
+
+.yardi-grid-toolbar input {
+  width: 120px;
+  height: 28px;
+  border-radius: 0;
+  padding: 0.2rem 0.35rem;
+}
+
+.yardi-grid-toolbar button {
+  min-width: 82px;
+  min-height: 26px;
+  border: 1px solid #a8b0b7;
+  border-radius: 0;
+  background: linear-gradient(#fff, #d8dde2);
+  color: #1d2d3b;
+  font-size: 0.72rem;
+}
+
+.yardi-message {
+  margin: 0.6rem 0;
+  border: 1px solid #77b68b;
+  background: #e8f7ed;
+  color: #12642b;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.yardi-table {
+  max-width: 760px;
+  border: 1px solid #aab5bd;
+  background: #fff;
+}
+
+.yardi-table th,
+.yardi-table td {
+  border: 1px solid #c8ced3;
+  padding: 0.24rem 0.38rem;
+  font-size: 0.74rem;
+}
+
+.yardi-table th {
+  background: #d9dee3;
+  color: #1f303d;
+}
+
+.yardi-table input[type="checkbox"] {
+  width: auto;
+}
+
+.yardi-table input:not([type="checkbox"]) {
+  height: 24px;
+  border-radius: 0;
+  padding: 0.1rem 0.25rem;
+}
+
+.yardi-empty {
+  max-width: 520px;
+  border: 1px solid #c7d2db;
+  background: #f7f9fb;
+  padding: 1rem;
+}
