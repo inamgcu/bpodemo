@@ -42,11 +42,12 @@ describe("reconciliation engine", () => {
 
     expect(run.matches).toHaveLength(1);
     expect(run.matches[0].status).toBe("matched");
+    expect(run.matches[0].explanation).toBe("");
     expect(run.exceptions).toHaveLength(0);
     expect(summarizeRun(run).matched).toBe(1);
   });
 
-  it("routes amount discrepancies to exception review", () => {
+  it("marks amount-tolerant deterministic counterparts as matched mismatch exceptions with AI reasoning", () => {
     const run = reconcileRun({
       ...baseRun,
       transactions: [
@@ -55,7 +56,60 @@ describe("reconciliation engine", () => {
       ],
     });
 
-    expect(run.matches[0].status).toBe("ambiguous");
-    expect(run.exceptions[0].category).toBe("amount-mismatch");
+    expect(run.matches[0]).toEqual(expect.objectContaining({
+      status: "matched",
+      type: "amount-mismatch",
+      explanation: expect.stringContaining("Mock AI reasoning"),
+    }));
+    expect(run.exceptions).toEqual([
+      expect.objectContaining({
+        matchId: run.matches[0].id,
+        category: "amount-mismatch",
+        aiReasoning: expect.stringContaining("Amount discrepancy detected"),
+      }),
+    ]);
+  });
+
+  it("does not mark a date mismatch when transaction dates match but posted date differs", () => {
+    const run = reconcileRun({
+      ...baseRun,
+      transactions: [
+        transaction({ id: "bank-1", source: "bank", amount: 1500, postedDate: "2026-04-06" }),
+        transaction({ id: "ledger-1", source: "ledger", amount: 1500, date: "2026-04-04" }),
+      ],
+    });
+
+    expect(run.matches[0]).toEqual(expect.objectContaining({
+      bankTransactionId: "bank-1",
+      ledgerTransactionId: "ledger-1",
+      status: "matched",
+      type: "exact",
+    }));
+    expect(run.matches[0].explanation).toBe("");
+    expect(run.exceptions).toHaveLength(0);
+  });
+
+  it("marks an actual transaction date mismatch when bank and ledger transaction dates differ", () => {
+    const run = reconcileRun({
+      ...baseRun,
+      transactions: [
+        transaction({ id: "bank-1", source: "bank", amount: 1500, date: "2026-04-06" }),
+        transaction({ id: "ledger-1", source: "ledger", amount: 1500, date: "2026-04-04" }),
+      ],
+    });
+
+    expect(run.matches[0]).toEqual(expect.objectContaining({
+      bankTransactionId: "bank-1",
+      ledgerTransactionId: "ledger-1",
+      status: "matched",
+      type: "date-mismatch",
+    }));
+    expect(run.matches[0].explanation).toContain("Mock AI reasoning");
+    expect(run.exceptions).toEqual([
+      expect.objectContaining({
+        matchId: run.matches[0].id,
+        category: "date-mismatch",
+      }),
+    ]);
   });
 });

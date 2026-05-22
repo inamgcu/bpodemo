@@ -1,4 +1,4 @@
-import type { BankAccount, MatchResult, Transaction, UploadedFile } from "../domain/types";
+import type { BankAccount, ExceptionRecord, MatchResult, Transaction, UploadedFile } from "../domain/types";
 
 export type UploadSectionRow = {
   id: string;
@@ -43,7 +43,60 @@ export type ReconciliationEvidence = {
   reportRows: EvidenceRow[];
 };
 
-export function getInitialExpandedPropertyId(_selectedPropertyId: string) {
+export type ExtractionSplitPane = {
+  id: "bank" | "ledger";
+  title: string;
+  rows: EvidenceRow[];
+};
+
+export type ReportMatchRow = {
+  id: string;
+  status: MatchResult["status"];
+  displayStatus: MatchResult["status"] | "partial match";
+  type: MatchResult["type"];
+  confidence: number;
+  bankSummary: string;
+  ledgerSummary: string;
+  amountSummary: string;
+  explanation: string;
+  exceptionId?: string;
+  reasonFeedback?: string;
+  reasonDecision?: string;
+  isMismatch: boolean;
+};
+
+export type ReportMatchGroups = {
+  matchedRows: ReportMatchRow[];
+  mismatchRows: ReportMatchRow[];
+};
+
+const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+export function getYardiLedgerAutomationButtonState(running: boolean) {
+  return {
+    disabled: running,
+    label: running ? "Getting Ledger from Yardi Voyager" : "Get Ledger from Yardi Voyager",
+  };
+}
+
+export function getAgentProcessingLogs() {
+  return [
+    "Financial Data Parsing Agent: validating uploaded files...",
+    "Extracting transactions...",
+    "Saving to database...",
+    "Reconciliation Agent: matching transactions...",
+    "Detecting exceptions...",
+    "Calculating balances...",
+    "Calculation completed.",
+  ];
+}
+
+export function getAgentCompletionNavigationView(): "report" {
+  return "report";
+}
+
+export function getInitialExpandedPropertyId(selectedPropertyId: string) {
+  void selectedPropertyId;
   return "";
 }
 
@@ -143,5 +196,99 @@ export function getReconciliationEvidence(input: {
     bankRows: reportRows.filter((row) => row.source === "bank"),
     ledgerRows: reportRows.filter((row) => row.source === "ledger"),
     reportRows,
+  };
+}
+
+export function getExtractionSplitPanes(evidence?: ReconciliationEvidence): ExtractionSplitPane[] {
+  return [
+    {
+      id: "bank",
+      title: "Bank Extract",
+      rows: evidence?.bankRows ?? [],
+    },
+    {
+      id: "ledger",
+      title: "Ledger Extract",
+      rows: evidence?.ledgerRows ?? [],
+    },
+  ];
+}
+
+function transactionSummary(transaction: Transaction | undefined, missingText: string) {
+  if (!transaction) return missingText;
+  const reference = transaction.reference ? `Ref ${transaction.reference}` : "No reference";
+  const sourceRow = transaction.sourceRow ? `row ${transaction.sourceRow}` : "row unknown";
+  return `${transaction.description} | ${money(transaction.amount)} | ${transaction.date} | ${reference} | ${transaction.sourceFile} ${sourceRow}`;
+}
+
+function amountSummary(bank: Transaction | undefined, ledger: Transaction | undefined) {
+  const bankAmount = bank ? `${money(bank.amount)} bank` : "no bank amount";
+  const ledgerAmount = ledger ? `${money(ledger.amount)} ledger` : "no ledger amount";
+  const variance = bank && ledger ? Math.abs(bank.amount - ledger.amount) : 0;
+  const varianceText = variance > 0 ? ` (${money(variance)} variance)` : "";
+  return `${bankAmount} / ${ledgerAmount}${varianceText}`;
+}
+
+function fallbackMismatchReason(match: MatchResult) {
+  if (match.type === "amount-mismatch") {
+    return "Amount discrepancy detected. Review tolerance or possible split transaction.";
+  }
+  if (match.type === "date-mismatch") {
+    return "Transaction date mismatch. The amount/reference align, but the transaction dates differ.";
+  }
+  if (match.status !== "matched") {
+    return match.bankTransactionId
+      ? "No ledger transaction met the medium confidence threshold."
+      : "Yardi ledger transaction has no matching bank statement item.";
+  }
+  return "";
+}
+
+export function getReportMatchRows(input: {
+  transactions: Transaction[];
+  matches: MatchResult[];
+  exceptions?: ExceptionRecord[];
+}): ReportMatchRow[] {
+  return input.matches.map((match) => {
+    const bank = input.transactions.find((transaction) => transaction.id === match.bankTransactionId);
+    const ledger = input.transactions.find((transaction) => transaction.id === match.ledgerTransactionId);
+    const exception = input.exceptions?.find((item) => item.matchId === match.id);
+    const actualDateMismatch = Boolean(bank && ledger && bank.date !== ledger.date);
+    const isMismatch = match.type === "amount-mismatch" || (match.type === "date-mismatch" && actualDateMismatch) || match.status !== "matched";
+    const hasCounterpartPair = Boolean(match.bankTransactionId && match.ledgerTransactionId);
+    const displayStatus = isMismatch && hasCounterpartPair ? "partial match" : match.status;
+    const shouldShowReason = isMismatch;
+    const explanation = exception?.aiReasoning || match.explanation || fallbackMismatchReason(match);
+    return {
+      id: match.id,
+      status: match.status,
+      displayStatus,
+      type: match.type,
+      confidence: match.confidence,
+      bankSummary: transactionSummary(bank, "No bank transaction matched"),
+      ledgerSummary: transactionSummary(ledger, "No ledger transaction matched"),
+      amountSummary: amountSummary(bank, ledger),
+      explanation: shouldShowReason ? explanation : "",
+      exceptionId: exception?.id,
+      reasonFeedback: exception?.userFeedback,
+      reasonDecision: exception?.userDecision,
+      isMismatch,
+    };
+  });
+}
+
+function isMismatchRow(row: ReportMatchRow) {
+  return row.isMismatch;
+}
+
+export function getReportMatchGroups(input: {
+  transactions: Transaction[];
+  matches: MatchResult[];
+  exceptions?: ExceptionRecord[];
+}): ReportMatchGroups {
+  const rows = getReportMatchRows(input);
+  return {
+    matchedRows: rows.filter((row) => row.status === "matched" && !row.isMismatch),
+    mismatchRows: rows.filter(isMismatchRow),
   };
 }

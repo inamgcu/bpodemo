@@ -15,7 +15,9 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 
 const DATABASE_FILE: &str = "reconciliation.db";
-const DEFAULT_AUTOMATION_SCRIPT: &str = r"C:\Users\inamul.haq\Downloads\Gmail-Agent.ts";
+const DEFAULT_AUTOMATION_SCRIPT_NAME: &str = "Gmail-Agent.ts";
+const DEFAULT_AUTOMATION_SCRIPT_FOLDER: &str = "automation-scripts";
+const LEGACY_DOWNLOADS_AUTOMATION_SCRIPT: &str = r"C:\Users\inamul.haq\Downloads\Gmail-Agent.ts";
 const NODE_AUTOMATION_PACKAGES: [&str; 2] = ["tsx@4.21.0", "@browserbasehq/stagehand@3.4.0"];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,6 +43,37 @@ fn storage_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(to_error)?;
     fs::create_dir_all(&dir).map_err(to_error)?;
     Ok(dir)
+}
+
+fn default_automation_script(app: &AppHandle) -> Result<String, String> {
+    let mut candidates = Vec::new();
+
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        candidates.push(resource_dir.join(DEFAULT_AUTOMATION_SCRIPT_FOLDER).join(DEFAULT_AUTOMATION_SCRIPT_NAME));
+        candidates.push(resource_dir.join(DEFAULT_AUTOMATION_SCRIPT_NAME));
+    }
+
+    if let Ok(current_dir) = std::env::current_dir() {
+        candidates.push(current_dir.join(DEFAULT_AUTOMATION_SCRIPT_FOLDER).join(DEFAULT_AUTOMATION_SCRIPT_NAME));
+        candidates.push(current_dir.join("..").join(DEFAULT_AUTOMATION_SCRIPT_FOLDER).join(DEFAULT_AUTOMATION_SCRIPT_NAME));
+    }
+
+    candidates.push(PathBuf::from(LEGACY_DOWNLOADS_AUTOMATION_SCRIPT));
+
+    for candidate in &candidates {
+        if candidate.exists() {
+            return Ok(candidate.to_string_lossy().to_string());
+        }
+    }
+
+    Err(format!(
+        "Automation script was not found. Checked: {}",
+        candidates
+            .iter()
+            .map(|path| path.to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join("; ")
+    ))
 }
 
 pub fn database_path(root: impl AsRef<Path>) -> PathBuf {
@@ -662,7 +695,7 @@ pub fn visible_mock_browser_html(script_path: &str) -> String {
   <main>
     <header>
       <h1>Yardi Browser Automation</h1>
-      <p>Visible mock automation launched from the desktop reconciliation approval flow.</p>
+      <p>Visible mock automation launched from the desktop reconciliation workflow.</p>
     </header>
     <section>
       <p>Automation script: <code>{script}</code></p>
@@ -738,7 +771,10 @@ fn open_visible_mock_browser(app: &AppHandle, script_path: &str) -> Result<Strin
 
 #[tauri::command]
 fn run_browser_automation(app: AppHandle, script_path: Option<String>, mock: Option<bool>) -> Result<BrowserAutomationResult, String> {
-    let script = script_path.unwrap_or_else(|| DEFAULT_AUTOMATION_SCRIPT.to_string());
+    let script = match script_path {
+        Some(script) if !script.trim().is_empty() => script,
+        _ => default_automation_script(&app)?,
+    };
     let script_path = Path::new(&script);
     if !script_path.exists() {
         return Err(format!("Automation script was not found: {script}"));

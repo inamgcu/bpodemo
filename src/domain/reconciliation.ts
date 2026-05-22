@@ -21,7 +21,7 @@ const direction = (transaction: Transaction) =>
 
 function scorePair(bank: Transaction, ledger: Transaction) {
   const amountDelta = Math.abs(bank.amount - ledger.amount);
-  const dateDelta = daysBetween(bank.postedDate ?? bank.date, ledger.date);
+  const dateDelta = daysBetween(bank.date, ledger.date);
   let score = 0;
   const reasons: string[] = [];
 
@@ -34,10 +34,10 @@ function scorePair(bank: Transaction, ledger: Transaction) {
   }
   if (dateDelta === 0) {
     score += 0.25;
-    reasons.push("date");
+    reasons.push("transaction date");
   } else if (dateDelta <= 3) {
     score += 0.13;
-    reasons.push("date shift");
+    reasons.push("transaction date shift");
   }
   if (bank.reference && ledger.reference && bank.reference === ledger.reference) {
     score += 0.25;
@@ -68,7 +68,7 @@ function makeException(match: MatchResult): ExceptionRecord {
 
   const aiReasoning =
     category === "date-mismatch"
-      ? "Transaction date mismatch. The amount/reference align, but posting date is shifted."
+      ? "Transaction date mismatch. The amount/reference align, but the transaction dates differ."
       : category === "amount-mismatch"
         ? "Amount discrepancy detected. Review tolerance or possible split transaction."
         : "No confident counterpart was found in the selected property/bank/month scope.";
@@ -84,6 +84,20 @@ function makeException(match: MatchResult): ExceptionRecord {
     confidence: match.confidence,
     updatedAt: now(),
   };
+}
+
+function mockAiReasoning(type: MatchResult["type"], reasons: string[], confidence: number) {
+  if (type === "exact") {
+    return "";
+  }
+  if (type === "probable") return "";
+  if (type === "date-mismatch") {
+    return `Mock AI reasoning: deterministic match found by ${reasons.join(", ")}. Transaction date differs, but the counterpart is reconciled.`;
+  }
+  if (type === "amount-mismatch") {
+    return `Mock AI reasoning: deterministic match found by ${reasons.join(", ")} with ${Math.round(confidence * 100)}% confidence. Amount difference is within tolerance.`;
+  }
+  return `Mock AI reasoning: deterministic counterpart found by ${reasons.join(", ")} with ${Math.round(confidence * 100)}% confidence.`;
 }
 
 export function reconcileRun(run: ReconciliationRun): ReconciliationRun {
@@ -124,22 +138,18 @@ export function reconcileRun(run: ReconciliationRun): ReconciliationRun {
           : best.confidence >= 0.95
             ? "exact"
             : "probable";
-    const status = type === "exact" ? "matched" : "ambiguous";
     const match: MatchResult = {
       id: `match-${slug(bank.id)}-${slug(best.ledger.id)}`,
       runId: run.id,
       bankTransactionId: bank.id,
       ledgerTransactionId: best.ledger.id,
-      status,
+      status: "matched",
       type,
       confidence: best.confidence,
-      explanation:
-        type === "exact"
-          ? "Amount, date, reference, and direction align across bank and Yardi ledger."
-          : `Matched using ${best.reasons.join(", ")} with ${Math.round(best.confidence * 100)}% confidence.`,
+      explanation: mockAiReasoning(type, best.reasons, best.confidence),
     };
     matches.push(match);
-    if (status !== "matched") {
+    if (type === "date-mismatch" || type === "amount-mismatch") {
       exceptions.push(makeException(match));
     }
   }

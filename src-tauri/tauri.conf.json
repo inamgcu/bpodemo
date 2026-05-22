@@ -28,6 +28,9 @@
   "bundle": {
     "active": true,
     "targets": ["nsis", "msi"],
+    "resources": [
+      "../automation-scripts/Gmail-Agent.ts"
+    ],
     "publisher": "BPO Finance Operations",
     "copyright": "Copyright 2026 BPO Finance Operations",
     "icon": [

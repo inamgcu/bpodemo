@@ -1,30 +1,23 @@
-import { Calendar, CheckCircle2, FileText, FileUp, ListChecks, Play, ShieldCheck } from "lucide-react";
+import { Calendar, CheckCircle2, FileText, FileUp, ListChecks, Play } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyState, MetricCard, StatusBadge, type ViewId } from "../components/Ui";
 import { getMaxReconciliationMonth, isAllowedReconciliationMonth } from "../domain/month";
 import { importLedgerWorkbook } from "../services/fileImport";
+import { listenToAutomationLogs, runBrowserAutomation } from "../services/desktop";
 import { mockBankStatementTransactions, mockLedgerTransactions, uploadedFile } from "../services/mockFiles";
 import { useAppState } from "../state/AppStateContext";
 import {
   type EvidenceRow,
-  type ReconciliationFlag,
+  getAgentCompletionNavigationView,
+  getAgentProcessingLogs,
+  getExtractionSplitPanes,
   getReconciliationEvidence,
   getReconciliationUploadSections,
+  getYardiLedgerAutomationButtonState,
 } from "./pageBehavior";
 
 const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
-
-type EvidenceTab = "bank" | "ledger" | "report";
-
-const evidenceTabLabels: Record<EvidenceTab, string> = {
-  bank: "Bank Extract",
-  ledger: "Ledger Extract",
-  report: "Reconciliation Report",
-};
-
-const flagTone = (flag: ReconciliationFlag) =>
-  flag === "matched" ? "success" : flag === "unmatched" ? "danger" : "warning";
 
 export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => void }) {
   const { state, activeRun, dispatch } = useAppState();
@@ -33,7 +26,7 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
   const [month, setMonth] = useState(getMaxReconciliationMonth());
   const [closingBalance, setClosingBalance] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [evidenceTab, setEvidenceTab] = useState<EvidenceTab>("bank");
+  const [ledgerAutomationRunning, setLedgerAutomationRunning] = useState(false);
   const maxMonth = getMaxReconciliationMonth();
   const selectedBanks = useMemo(() => state.banks.filter((bank) => bank.propertyId === propertyId), [propertyId, state.banks]);
   const runBanks = activeRun ? state.banks.filter((bank) => bank.propertyId === activeRun.propertyId) : selectedBanks;
@@ -55,11 +48,8 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
       : undefined,
     [activeRun],
   );
-  const evidenceRows = evidenceTab === "bank"
-    ? evidence?.bankRows ?? []
-    : evidenceTab === "ledger"
-      ? evidence?.ledgerRows ?? []
-      : evidence?.reportRows ?? [];
+  const extractionPanes = useMemo(() => getExtractionSplitPanes(evidence), [evidence]);
+  const ledgerAutomationButton = getYardiLedgerAutomationButtonState(ledgerAutomationRunning);
 
   function startRun() {
     if (!isAllowedReconciliationMonth(month)) {
@@ -68,7 +58,6 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
     }
     dispatch({ type: "start-run", propertyId, month });
     setStep(2);
-    setEvidenceTab("bank");
   }
 
   function saveBalance() {
@@ -99,7 +88,6 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
       transactions,
       log: `Parsing ${bank.name} statement... extracted ${transactions.length} transactions and saved to SQLite.`,
     });
-    setEvidenceTab("bank");
   }
 
   async function uploadLedger(file?: File) {
@@ -118,25 +106,73 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
         transactions,
         log: "Ledger uploaded successfully. Parsed rows saved to local SQLite.",
       });
-      setEvidenceTab("ledger");
     } catch (error) {
       dispatch({ type: "toast", tone: "danger", message: error instanceof Error ? error.message : "Unable to upload ledger." });
     }
   }
 
-  function loadLedgerSample() {
+  function attachLedgerSample(fileName?: string, log?: string) {
     if (!activeRun) return;
+    const ledgerFileName = fileName ?? `yardi-ledger-${activeRun.month}.xlsx`;
     const transactions = runBanks.flatMap((bank) =>
-      mockLedgerTransactions({ runId: activeRun.id, propertyId: activeRun.propertyId, bank, month: activeRun.month }),
+      mockLedgerTransactions({ runId: activeRun.id, propertyId: activeRun.propertyId, bank, month: activeRun.month, fileName: ledgerFileName }),
     );
     dispatch({
       type: "attach-file",
       runId: activeRun.id,
-      file: uploadedFile(`yardi-ledger-${activeRun.month}.xlsx`, "yardi-ledger", transactions.length),
+      file: uploadedFile(ledgerFileName, "yardi-ledger", transactions.length),
       transactions,
-      log: "Ledger uploaded successfully. Mock Yardi export normalized and saved to database.",
+      log: log ?? "Ledger uploaded successfully. Mock Yardi export normalized and saved to database.",
     });
-    setEvidenceTab("ledger");
+  }
+
+  function loadLedgerSample() {
+    attachLedgerSample();
+  }
+
+  async function getLedgerFromYardiVoyager() {
+    if (!activeRun) return;
+    setLedgerAutomationRunning(true);
+    dispatch({
+      type: "append-run-log",
+      runId: activeRun.id,
+      line: "Launching automation-scripts\\Gmail-Agent.ts to retrieve Yardi Voyager ledger...",
+    });
+    let unlisten: (() => void) | undefined;
+    let streamedLineCount = 0;
+    try {
+      unlisten = await listenToAutomationLogs((line) => {
+        streamedLineCount += 1;
+        dispatch({ type: "append-run-log", runId: activeRun.id, line });
+      });
+      const result = await runBrowserAutomation();
+      const lines = [
+        `Gmail-Agent.ts finished with exit code ${result.exitCode ?? "unknown"}.`,
+        ...(streamedLineCount ? [`Captured ${streamedLineCount} live automation log line(s).`] : result.lines),
+        "Browser automation completed. Browser closed. Auto-populating sample Yardi ledger.",
+      ];
+      for (const line of lines) {
+        dispatch({ type: "append-run-log", runId: activeRun.id, line });
+      }
+      attachLedgerSample(
+        `yardi-voyager-ledger-${activeRun.month}.xlsx`,
+        "Yardi Voyager ledger retrieved by browser automation. Sample ledger normalized and saved to database.",
+      );
+      dispatch({
+        type: "toast",
+        tone: result.exitCode === 0 ? "success" : "warning",
+        message: result.exitCode === 0
+          ? "Yardi Voyager ledger retrieved and loaded."
+          : "Browser automation returned a non-zero exit code. Sample ledger was still loaded for review.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to retrieve ledger from Yardi Voyager.";
+      dispatch({ type: "append-run-log", runId: activeRun.id, line: `Gmail-Agent.ts failed to launch: ${message}` });
+      dispatch({ type: "toast", tone: "danger", message });
+    } finally {
+      unlisten?.();
+      setLedgerAutomationRunning(false);
+    }
   }
 
   async function processRun() {
@@ -148,66 +184,48 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
     }
     setStep(3);
     setProcessing(true);
-    const logs = [
-      "Financial Data Parsing Agent: validating uploaded files...",
-      "Extracting transactions...",
-      "Saving to database...",
-      "Reconciliation Agent: matching transactions...",
-      "Detecting exceptions...",
-      "Calculating balances...",
-    ];
-    for (const line of logs) {
+    const logs = getAgentProcessingLogs();
+    for (const line of logs.slice(0, -1)) {
       dispatch({ type: "append-run-log", runId: activeRun.id, line });
       await delay(180);
     }
     dispatch({ type: "process-run", runId: activeRun.id });
+    dispatch({ type: "append-run-log", runId: activeRun.id, line: logs.at(-1) ?? "Calculation completed." });
     setProcessing(false);
-    setEvidenceTab("report");
+    onNavigate(getAgentCompletionNavigationView());
   }
 
-  function renderRows(rows: EvidenceRow[], mode: EvidenceTab) {
+  function renderExtractionRows(rows: EvidenceRow[], mode: "bank" | "ledger") {
     if (!rows.length) {
       return (
         <EmptyState
-          title={mode === "bank" ? "No bank rows extracted yet" : mode === "ledger" ? "No ledger rows extracted yet" : "No reconciliation rows yet"}
-          detail={mode === "report" ? "Upload files and start reconciliation to see matched and unmatched flags." : "Upload a file or load a sample to preview parsed transactions."}
+          title={mode === "bank" ? "No bank rows extracted yet" : "No ledger rows extracted yet"}
+          detail="Upload a file or load a sample to preview parsed transactions."
         />
       );
     }
 
     return (
       <div className="transaction-table-wrap">
-        <table className="transaction-table">
+        <table className="transaction-table transaction-table--extract">
           <thead>
             <tr>
-              {mode === "report" ? <th>Flag</th> : null}
-              {mode === "report" ? <th>Source</th> : null}
-              <th>Date</th>
-              <th>Posted</th>
               <th>Description</th>
               <th>Reference</th>
               <th>Debit</th>
               <th>Credit</th>
               <th>Amount</th>
-              {mode === "report" ? <th>Counterpart</th> : null}
-              {mode === "report" ? <th>Confidence</th> : null}
               <th>File</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={`${mode}-${row.transactionId}`}>
-                {mode === "report" ? <td><StatusBadge tone={flagTone(row.flag)}>{row.flag}</StatusBadge></td> : null}
-                {mode === "report" ? <td><StatusBadge tone={row.source === "bank" ? "info" : "neutral"}>{row.source}</StatusBadge></td> : null}
-                <td>{row.date}</td>
-                <td>{row.postedDate ?? "-"}</td>
                 <td className="transaction-description">{row.description}</td>
                 <td>{row.reference ?? "-"}</td>
                 <td>{row.debit ? money(row.debit) : "-"}</td>
                 <td>{row.credit ? money(row.credit) : "-"}</td>
                 <td>{money(row.amount)}</td>
-                {mode === "report" ? <td>{row.counterpartId ?? "-"}</td> : null}
-                {mode === "report" ? <td>{typeof row.confidence === "number" ? `${Math.round(row.confidence * 100)}%` : "-"}</td> : null}
                 <td>{row.sourceFile}{row.sourceRow ? ` #${row.sourceRow}` : ""}</td>
               </tr>
             ))}
@@ -305,6 +323,9 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
                     </div>
                   </div>
                   <div className="upload-row-actions">
+                    <button className="secondary-button" type="button" disabled={ledgerAutomationButton.disabled} onClick={getLedgerFromYardiVoyager}>
+                      <Play size={16} />{ledgerAutomationButton.label}
+                    </button>
                     <button className="secondary-button" type="button" onClick={loadLedgerSample}><FileText size={16} />Sample Excel</button>
                     <label className="file-button"><FileUp size={16} />Upload Excel<input type="file" accept=".xlsx,.xls" onChange={(event) => uploadLedger(event.target.files?.[0])} /></label>
                   </div>
@@ -320,30 +341,28 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
 
           <section className="panel evidence-panel">
             <div className="panel-heading">
-              <div><p className="eyebrow">Extracted data</p><h2>Bank, ledger, and reconciliation evidence</h2></div>
+              <div><p className="eyebrow">Extracted data</p><h2>Bank and ledger extract</h2></div>
               <ListChecks size={22} />
             </div>
-            <div className="evidence-tabs">
-              {(Object.keys(evidenceTabLabels) as EvidenceTab[]).map((tab) => (
-                <button className={evidenceTab === tab ? "active" : ""} key={tab} type="button" onClick={() => setEvidenceTab(tab)}>
-                  {evidenceTabLabels[tab]}
-                </button>
-              ))}
-            </div>
-            <div className="evidence-summary">
+            <div className="evidence-summary evidence-summary--split">
               <span><strong>{evidence?.bankRows.length ?? 0}</strong> bank transaction(s) extracted</span>
               <span><strong>{evidence?.ledgerRows.length ?? 0}</strong> ledger transaction(s) extracted</span>
-              <span><strong>{evidence?.reportRows.filter((row) => row.flag === "matched").length ?? 0}</strong> matched</span>
-              <span><strong>{evidence?.reportRows.filter((row) => row.flag === "unmatched").length ?? 0}</strong> unmatched</span>
             </div>
-            {renderRows(evidenceRows, evidenceTab)}
+            <div className="extraction-split">
+              {extractionPanes.map((pane) => (
+                <section className="extraction-pane" key={pane.id} aria-label={pane.title}>
+                  <div className="extraction-pane-heading">
+                    <h3>{pane.title}</h3>
+                    <StatusBadge tone={pane.rows.length ? "success" : "neutral"}>{pane.rows.length}</StatusBadge>
+                  </div>
+                  {renderExtractionRows(pane.rows, pane.id)}
+                </section>
+              ))}
+            </div>
           </section>
 
           <div className="action-strip action-strip--end">
-            <button className="secondary-button" type="button" onClick={() => dispatch({ type: "append-run-log", runId: activeRun.id, line: "Approval captured before Yardi ledger sync." })}>
-              <ShieldCheck size={16} />Approve Yardi Sync
-            </button>
-            {activeRun.matches.length ? <button className="secondary-button" type="button" onClick={() => onNavigate("report")}><ListChecks size={16} />Open Full Report</button> : null}
+            {activeRun.matches.length ? <button className="secondary-button" type="button" onClick={() => onNavigate("report")}><ListChecks size={16} />Open Reconciliation Report</button> : null}
             <button className="primary-button" type="button" onClick={processRun}><Play size={16} />Start Reconciliation</button>
           </div>
         </>
@@ -359,8 +378,7 @@ export function ReconcilePage({ onNavigate }: { onNavigate: (view: ViewId) => vo
             {activeRun.automationLogs.map((line, index) => <p key={`${line}-${index}`}>{line}</p>)}
           </div>
           <div className="action-strip action-strip--end">
-            <button className="secondary-button" type="button" onClick={() => setStep(2)}><ListChecks size={16} />Review Extracted Data</button>
-            <button className="secondary-button" type="button" onClick={() => onNavigate("report")}><ListChecks size={16} />Open Full Report</button>
+            <button className="secondary-button" type="button" onClick={() => onNavigate("report")}><ListChecks size={16} />Open Reconciliation Report</button>
           </div>
         </section>
       ) : null}

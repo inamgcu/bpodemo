@@ -14,7 +14,7 @@ export function ApprovalPage({ onNavigate }: { onNavigate: (view: ViewId) => voi
   async function approveAndMark() {
     if (!activeRun) return;
     dispatch({ type: "approve-run", runId: activeRun.id, actor: "Senior Reviewer", note });
-    dispatch({ type: "append-run-log", runId: activeRun.id, line: "Launching C:\\Users\\inamul.haq\\Downloads\\Gmail-Agent.ts..." });
+    dispatch({ type: "append-run-log", runId: activeRun.id, line: "Launching automation-scripts\\Gmail-Agent.ts..." });
     setRunning(true);
     let unlisten: (() => void) | undefined;
     let streamedLineCount = 0;

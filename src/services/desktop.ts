@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppData } from "../domain/types";
 
 const storageKey = "bpo-yardi-reconciliation-state";
-const defaultAutomationScript = "C:\\Users\\inamul.haq\\Downloads\\Gmail-Agent.ts";
+const defaultAutomationScript = "automation-scripts/Gmail-Agent.ts";
 
 const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -42,7 +42,8 @@ export async function exportBinaryFile(fileName: string, base64Data: string) {
   return `Downloaded ${fileName}`;
 }
 
-export async function runBrowserAutomation(scriptPath = defaultAutomationScript) {
+export async function runBrowserAutomation(scriptPath?: string) {
+  const displayPath = scriptPath ?? defaultAutomationScript;
   if (isTauri()) {
     return await invoke<BrowserAutomationResult>("run_browser_automation", {
       scriptPath,
@@ -60,7 +61,7 @@ export async function runBrowserAutomation(scriptPath = defaultAutomationScript)
           <p style="color:#b8c4d6">Visible browser mock launched from Vite development mode.</p>
         </header>
         <section style="padding:22px 26px">
-          <p>Automation script: <code>${scriptPath}</code></p>
+          <p>Automation script: <code>${displayPath}</code></p>
           <ol id="steps" style="display:grid;gap:12px"></ol>
         </section>
       </main>
@@ -68,6 +69,7 @@ export async function runBrowserAutomation(scriptPath = defaultAutomationScript)
         const labels = ["Open Yardi reconciliation workspace","Authenticate with restricted demo credentials","Select approved property/month","Mark approved transactions","Capture completion logs"];
         const root = document.getElementById("steps");
         labels.forEach(label => { const li = document.createElement("li"); li.textContent = label; li.style.padding = "12px"; li.style.border = "1px solid #dce3eb"; li.style.borderRadius = "8px"; root.appendChild(li); });
+        window.setTimeout(() => window.close(), 1800);
       </script>
     </body>
   `);
@@ -75,11 +77,12 @@ export async function runBrowserAutomation(scriptPath = defaultAutomationScript)
     mocked: true,
     exitCode: 0,
     lines: [
-      `Browser fallback validated automation path: ${scriptPath}`,
+      `Browser fallback validated automation path: ${displayPath}`,
       "Opened visible mock browser automation window.",
       "MOCK browser opened Yardi reconciliation page.",
       "MOCK selected approved property/month and marked matched transactions.",
       "MOCK captured item-level completion logs.",
+      "MOCK browser closed automatically.",
     ],
   };
 }
